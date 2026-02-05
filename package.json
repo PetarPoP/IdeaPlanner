@@ -1,0 +1,16 @@
+{
+  "name": "idea-planner-root",
+  "private": true,
+  "scripts": {
+    "dev:web": "npm run dev --prefix ./web",
+    "build:web": "npm run build --prefix ./web",
+    "lint:web": "npm run lint --prefix ./web",
+    "tauri:dev": "npx tauri dev",
+    "tauri:android": "npx tauri android dev",
+    "tauri:ios": "npx tauri ios dev"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}
+

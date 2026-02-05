@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/capabilities/2",
+  "identifier": "default",
+  "description": "Default capabilities for Idea Planner",
+  "platforms": ["linux", "macOS", "windows", "android", "iOS"],
+  "permissions": [
+    "core:default"
+  ]
+}
+

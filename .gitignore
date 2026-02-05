@@ -1,0 +1,13 @@
+# Local env (secrets)
+.env
+.env.local
+.env.*.local
+
+# Rust / Cargo
+target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
