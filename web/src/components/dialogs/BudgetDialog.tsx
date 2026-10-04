@@ -27,7 +27,7 @@ export function BudgetDialog() {
 
   const addExpense = () => {
     if (!qaNode || !qa.text.trim()) return
-    const item = { id: uid(), text: qa.text.trim(), cost: qa.amt, paid: qa.payer >= 0, payer: Math.max(0, qa.payer) }
+    const item = { id: uid(), text: qa.text.trim(), cost: qa.amt, cur: '', paid: qa.payer >= 0, payer: Math.max(0, qa.payer), due: '' }
     patchNode<'section'>(qaNode, (x) => ({ ...x, items: [...x.items, item] }))
     log(`added expense ${item.text}`)
     setQa({ text: '', amt: '', node: qaNode, payer: -1 })

@@ -4,6 +4,7 @@
 //! store (device SQLite, server Postgres) runs before it accepts a write.
 
 mod model;
+pub mod patch;
 
 use std::collections::HashSet;
 
@@ -79,6 +80,10 @@ impl Board {
                 Err(BoardError::UnknownPerson(ix))
             }
         };
+        for st in &self.settlements {
+            check(st.from)?;
+            check(st.to)?;
+        }
         for node in &self.nodes {
             match &node.body {
                 NodeBody::Section { items, .. } => items.iter().try_for_each(|i| check(i.payer))?,
@@ -130,6 +135,10 @@ mod tests {
             full: name.into(),
             ini: name[..1].into(),
             role: Role::Edit,
+            user_id: String::new(),
+            email: String::new(),
+            paypal: String::new(),
+            revolut: String::new(),
         }
     }
 
@@ -153,13 +162,17 @@ mod tests {
                 title: "Costs".into(),
                 icon: "coins".into(),
                 accent: false,
+                color: String::new(),
+                comments: vec![],
                 body: NodeBody::Section {
                     items: vec![CostItem {
                         id: "i1".into(),
                         text: "Van".into(),
                         cost: "520".into(),
+                        cur: String::new(),
                         paid: true,
                         payer: 1,
+                        due: String::new(),
                     }],
                     budget: String::new(),
                 },
@@ -167,6 +180,9 @@ mod tests {
             edges: vec![],
             strokes: vec![],
             activity: vec![],
+            settlements: vec![],
+            rates: Default::default(),
+            rates_at: 0.0,
         }
     }
 

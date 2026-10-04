@@ -26,7 +26,20 @@ cap: string, cur: string,
 /**
  * How many of `people` the costs are split between.
  */
-splitN: number, people: Array<Person>, nodes: Array<Node>, edges: Array<Edge>, strokes: Array<Stroke>, activity: Array<Activity>, };
+splitN: number, people: Array<Person>, nodes: Array<Node>, edges: Array<Edge>, strokes: Array<Stroke>, activity: Array<Activity>, 
+/**
+ * Payments people made to each other to settle up.
+ */
+settlements: Array<Settlement>, 
+/**
+ * What one unit of another currency is worth in `cur`, keyed by the
+ * currency as typed on costs (`"$"`, `"USD"`…).
+ */
+rates: { [key in string]: number }, 
+/**
+ * When `rates` were fetched (Unix ms), 0 if never.
+ */
+ratesAt: number, };
 
 /**
  * One row of the "my boards" list.
@@ -39,11 +52,33 @@ updatedAt: number, };
 
 export type BookingKind = "Flight" | "Stay" | "Car" | "Ticket";
 
-export type CostItem = { id: string, text: string, cost: string, paid: boolean, payer: number, };
+export type Comment = { id: string, 
+/**
+ * Display name of the author.
+ */
+who: string, text: string, 
+/**
+ * Unix time in milliseconds.
+ */
+t: number, };
+
+export type CostItem = { id: string, text: string, cost: string, 
+/**
+ * Currency of `cost` when it differs from the board's.
+ */
+cur: string, paid: boolean, payer: number, 
+/**
+ * ISO date the payment is due, for reminders.
+ */
+due: string, };
 
 export type Edge = { id: string, from: string, to: string, };
 
-export type Node = { id: string, x: number, y: number, w: number, title: string, icon: string, accent: boolean, } & ({ "type": "section", items: Array<CostItem>, budget: string, } | { "type": "note", text: string, votes: Array<number>, author: string, } | { "type": "checklist", items: Array<Task>, } | { "type": "poll", options: Array<PollOption>, } | { "type": "link", url: string, } | { "type": "image", src: string | null, } | { "type": "santa", cap: string, pairs: Array<number> | null, revealed: Array<number>, } | { "type": "map", input: string, } | { "type": "itinerary", 
+export type Node = { id: string, x: number, y: number, w: number, title: string, icon: string, accent: boolean, 
+/**
+ * Palette key (`violet`, `amber`, `mint`, `rose`, `sky`), empty for the default surface.
+ */
+color: string, comments: Array<Comment>, } & ({ "type": "section", items: Array<CostItem>, budget: string, } | { "type": "note", text: string, votes: Array<number>, author: string, } | { "type": "checklist", items: Array<Task>, } | { "type": "poll", options: Array<PollOption>, } | { "type": "link", url: string, } | { "type": "image", src: string | null, } | { "type": "santa", cap: string, pairs: Array<number> | null, revealed: Array<number>, } | { "type": "map", input: string, } | { "type": "itinerary", 
 /**
  * ISO date (`YYYY-MM-DD`).
  */
@@ -55,7 +90,11 @@ startDate: string, startTime: string,
 /**
  * Return / check-out / drop-off.
  */
-endDate: string, endTime: string, conf: string, cost: string, paid: boolean, payer: number, } | { "type": "places", items: Array<Place>, } | { "type": "email", from: string, to: string, subject: string, 
+endDate: string, endTime: string, conf: string, cost: string, 
+/**
+ * Currency of `cost` when it differs from the board's.
+ */
+cur: string, paid: boolean, payer: number, } | { "type": "places", items: Array<Place>, } | { "type": "sticky", text: string, } | { "type": "frame", h: number, } | { "type": "email", from: string, to: string, subject: string, 
 /**
  * As sent, e.g. an RFC 2822 date or an ISO date.
  */
@@ -73,7 +112,11 @@ startDate: string, startTime: string,
 /**
  * Return / check-out / drop-off.
  */
-endDate: string, endTime: string, conf: string, cost: string, paid: boolean, payer: number, } | { "type": "places", items: Array<Place>, } | { "type": "email", from: string, to: string, subject: string, 
+endDate: string, endTime: string, conf: string, cost: string, 
+/**
+ * Currency of `cost` when it differs from the board's.
+ */
+cur: string, paid: boolean, payer: number, } | { "type": "places", items: Array<Place>, } | { "type": "sticky", text: string, } | { "type": "frame", h: number, } | { "type": "email", from: string, to: string, subject: string, 
 /**
  * As sent, e.g. an RFC 2822 date or an ISO date.
  */
@@ -83,7 +126,19 @@ export type Person = {
 /**
  * Short display name.
  */
-name: string, full: string, ini: string, role: Role, };
+name: string, full: string, ini: string, role: Role, 
+/**
+ * Account this person signed in with, once linked.
+ */
+userId: string, email: string, 
+/**
+ * PayPal.me username, for settle-up links.
+ */
+paypal: string, 
+/**
+ * Revolut username (revolut.me/…), for settle-up links.
+ */
+revolut: string, };
 
 export type Place = { id: string, name: string, 
 /**
@@ -94,6 +149,12 @@ cat: number, hearts: Array<number>, };
 export type PollOption = { id: string, text: string, votes: Array<number>, };
 
 export type Role = "View" | "Edit" | "Admin";
+
+export type Settlement = { id: string, from: number, to: number, amount: string, 
+/**
+ * Unix time in milliseconds.
+ */
+t: number, };
 
 export type Stop = { id: string, time: string, place: string, cost: string, };
 

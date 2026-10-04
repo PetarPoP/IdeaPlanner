@@ -4,6 +4,8 @@
 //! Money values are kept as the strings people typed (`"12,50"`), so a field
 //! can hold a half-typed number; the UI parses them when it sums.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 /// Index into [`Board::people`].
@@ -49,15 +51,57 @@ model! {
         pub strokes: Vec<Stroke>,
         #[serde(default)]
         pub activity: Vec<Activity>,
+        /// Payments people made to each other to settle up.
+        #[serde(default)]
+        pub settlements: Vec<Settlement>,
+        /// What one unit of another currency is worth in `cur`, keyed by the
+        /// currency as typed on costs (`"$"`, `"USD"`…).
+        #[serde(default)]
+        pub rates: BTreeMap<String, f64>,
+        /// When `rates` were fetched (Unix ms), 0 if never.
+        #[serde(default)]
+        pub rates_at: f64,
     }
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct Settlement {
+        pub id: String,
+        pub from: PersonIx,
+        pub to: PersonIx,
+        pub amount: String,
+        /// Unix time in milliseconds.
+        pub t: f64,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct Comment {
+        pub id: String,
+        /// Display name of the author.
+        pub who: String,
+        pub text: String,
+        /// Unix time in milliseconds.
+        pub t: f64,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
     pub struct Person {
         /// Short display name.
         pub name: String,
         pub full: String,
         pub ini: String,
         pub role: Role,
+        /// Account this person signed in with, once linked.
+        #[serde(default)]
+        pub user_id: String,
+        #[serde(default)]
+        pub email: String,
+        /// PayPal.me username, for settle-up links.
+        #[serde(default)]
+        pub paypal: String,
+        /// Revolut username (revolut.me/…), for settle-up links.
+        #[serde(default)]
+        pub revolut: String,
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -77,6 +121,11 @@ model! {
         pub icon: String,
         #[serde(default)]
         pub accent: bool,
+        /// Palette key (`violet`, `amber`, `mint`, `rose`, `sky`), empty for the default surface.
+        #[serde(default)]
+        pub color: String,
+        #[serde(default)]
+        pub comments: Vec<Comment>,
         #[serde(flatten)]
         pub body: NodeBody,
     }
@@ -114,10 +163,16 @@ model! {
             end_time: String,
             conf: String,
             cost: String,
+            /// Currency of `cost` when it differs from the board's.
+            #[serde(default)]
+            cur: String,
             paid: bool,
             payer: PersonIx,
         },
         Places { items: Vec<Place> },
+        Sticky { text: String },
+        /// A titled area drawn behind cards; moving it moves the cards inside.
+        Frame { h: f64 },
         Email {
             from: String,
             to: String,
@@ -141,8 +196,14 @@ model! {
         pub id: String,
         pub text: String,
         pub cost: String,
+        /// Currency of `cost` when it differs from the board's.
+        #[serde(default)]
+        pub cur: String,
         pub paid: bool,
         pub payer: PersonIx,
+        /// ISO date the payment is due, for reminders.
+        #[serde(default)]
+        pub due: String,
     }
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -24,10 +24,19 @@ export function normalizeBoard(raw: Loose<Board>): Board {
     edges: raw.edges ?? [],
     strokes: (raw.strokes ?? []).map((s) => ({ ...s, color: str(s.color) })),
     activity: raw.activity ?? [],
+    people: (raw.people ?? []).map((p) => ({ ...p, userId: str(p.userId), email: str(p.email), paypal: str(p.paypal), revolut: str(p.revolut) })),
+    settlements: raw.settlements ?? [],
+    rates: raw.rates ?? {},
+    ratesAt: typeof raw.ratesAt === 'number' ? raw.ratesAt : 0,
   }
 }
 
-function normalizeNode(n: Loose<Node>, year: number): Node {
+function normalizeNode(raw: Loose<Node>, year: number): Node {
+  const n = { ...raw, color: str(raw.color), comments: raw.comments ?? [] } as Loose<Node>
+  if (n.type === 'section') {
+    const items = (n as Loose<Extract<Node, { type: 'section' }>>).items ?? []
+    return { ...n, items: items.map((i) => ({ ...i, cur: str(i.cur), due: str(i.due) })) } as Node
+  }
   if (n.type === 'itinerary') return { ...n, date: looseToIso(str(n.date), year) } as Node
   if (n.type === 'booking') {
     const { when, ...rest } = n as Loose<Extract<Node, { type: 'booking' }>> & { when?: unknown }
@@ -39,6 +48,7 @@ function normalizeNode(n: Loose<Node>, year: number): Node {
       startTime: str(rest.startTime) || (/^\d{1,2}:\d{2}$/.test(t) ? t.padStart(5, '0') : ''),
       endDate: str(rest.endDate),
       endTime: str(rest.endTime),
+      cur: str(rest.cur),
     } as Node
   }
   return n as Node

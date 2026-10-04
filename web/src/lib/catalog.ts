@@ -16,6 +16,8 @@ export const KIND_LABEL: Record<NodeType, string> = {
   booking: 'Booking',
   places: 'Places',
   email: 'Email',
+  sticky: 'Sticky',
+  frame: 'Frame',
 }
 
 /** Wording for the activity log ("added a day plan"). */
@@ -72,7 +74,7 @@ export const SAMPLE_PEOPLE: Person[] = [
   ['Tom', 'Tom Rossi', 'TR', 'View'],
   ['Nika', 'Nika Horvat', 'NH', 'View'],
   ['Filip', 'Filip Kos', 'FK', 'View'],
-].map(([name, full, ini, role]) => ({ name, full, ini, role }) as Person)
+].map(([name, full, ini, role]) => ({ name, full, ini, role, userId: '', email: '', paypal: '', revolut: '' }) as Person)
 
 export const ME = 0
 

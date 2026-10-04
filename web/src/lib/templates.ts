@@ -3,14 +3,16 @@ import type { NodeType } from './catalog'
 import { SAMPLE_PEOPLE } from './catalog'
 import { uid } from './ids'
 
-type NodeBody<T extends NodeType> = Omit<Extract<Node, { type: T }>, 'id' | 'x' | 'y' | 'w' | 'title' | 'icon' | 'accent'>
+type NodeBody<T extends NodeType> = Omit<Extract<Node, { type: T }>, 'id' | 'x' | 'y' | 'w' | 'title' | 'icon' | 'accent' | 'color' | 'comments'>
 
 const it = (text: string, cost?: number, paid = false, payer = 0): CostItem => ({
   id: uid(),
   text,
   cost: cost == null ? '' : String(cost),
+  cur: '',
   paid,
   payer,
+  due: '',
 })
 const ck = (text: string, done = false, who: number | null = null): Task => ({ id: uid(), text, done, who })
 const st = (time: string, place: string, cost?: number): Stop => ({
@@ -30,6 +32,8 @@ const card = (id: string, x: number, y: number, w: number, title: string, icon: 
   title,
   icon,
   accent,
+  color: '',
+  comments: [],
 })
 const sec = (id: string, x: number, y: number, title: string, icon: string, items: CostItem[], budget = ''): Node => ({
   ...card(id, x, y, 280, title, icon),
@@ -77,7 +81,7 @@ const CONTENT: Record<TemplateKey, () => Content> = {
       sec('tra', 320, 580, 'Transport', 'car-profile', [it('9-seat van, 7 days', 520, true, 2), it('Fuel & tolls', 220)]),
       sec('act', 640, 580, 'Activities', 'person-simple-swim', [it('Surf lesson ×6', 270), it('Benagil boat tour', 150)]),
       sec('food', 960, 580, 'Food & drinks', 'fork-knife', [it('Groceries kitty', 300, true, 1), it('Two dinners out', 200)]),
-      { ...card('fl', 1300, 580, 280, 'Flights', 'airplane-tilt'), type: 'booking', kind: 'Flight', from: 'ZAG', to: 'LIS', startDate: '2027-06-12', startTime: '07:05', endDate: '2027-06-19', endTime: '18:40', conf: 'TP4K9Q', cost: '840', paid: true, payer: 0 },
+      { ...card('fl', 1300, 580, 280, 'Flights', 'airplane-tilt'), type: 'booking', kind: 'Flight', from: 'ZAG', to: 'LIS', startDate: '2027-06-12', startTime: '07:05', endDate: '2027-06-19', endTime: '18:40', conf: 'TP4K9Q', cost: '840', cur: '', paid: true, payer: 0 },
       { ...card('pack', 0, 900, 280, 'Packing list', 'backpack'), type: 'checklist', items: [ck('Passports', true, 0), ck('Sunscreen SPF50', true, 1), ck('Wetsuits ×2', false, 2), ck('Portable speaker', false, 5), ck('Beach towels')] },
       note('idea', 320, 900, 260, 'Night idea', 'lightbulb', 'Sunset at Miradouro da Senhora do Monte, then fado in Alfama.', [1, 2, 3, 4], 'Maja'),
       { ...card('poll', 640, 920, 280, 'Day 5 — where to?', 'chart-bar'), type: 'poll', options: [opt('Benagil caves', [1, 4, 5]), opt('Sagres & Cabo São Vicente', [2, 3])] },
@@ -187,6 +191,9 @@ export function fromTemplate(key: TemplateKey, keep: Pick<Board, 'id'> & Partial
     splitN: Math.min(keep.splitN ?? 6, people.length),
     strokes: [],
     activity: [],
+    settlements: [],
+    rates: {},
+    ratesAt: 0,
   }
 }
 
@@ -203,6 +210,8 @@ export const DEFAULT_WIDTH: Record<NodeType, number> = {
   link: 260,
   image: 260,
   email: 320,
+  sticky: 200,
+  frame: 640,
 }
 
 /** A fresh card of `type`, without position. */
@@ -217,12 +226,14 @@ export function newCard<T extends NodeType>(type: T): Omit<Extract<Node, { type:
     santa: { title: 'Name draw', icon: 'shuffle', type: 'santa', cap: '30', pairs: null, revealed: [] },
     map: { title: 'Map', icon: 'map-trifold', type: 'map', input: '' },
     itinerary: { title: 'New day', icon: 'calendar-dots', type: 'itinerary', date: '', stops: [st('', '')] },
-    booking: { title: 'Booking', icon: 'airplane-tilt', type: 'booking', kind: 'Flight', from: '', to: '', startDate: '', startTime: '', endDate: '', endTime: '', conf: '', cost: '', paid: false, payer: 0 },
+    booking: { title: 'Booking', icon: 'airplane-tilt', type: 'booking', kind: 'Flight', from: '', to: '', startDate: '', startTime: '', endDate: '', endTime: '', conf: '', cost: '', cur: '', paid: false, payer: 0 },
+    sticky: { title: 'Sticky', icon: 'note', accent: false, type: 'sticky', text: '' },
+    frame: { title: 'Frame', icon: 'frame-corners', type: 'frame', h: 420 },
     email: { title: 'Email', icon: 'envelope-simple', type: 'email', from: '', to: '', subject: '', date: '', body: '' },
     places: { title: 'Places to visit', icon: 'push-pin', type: 'places', items: [pl('', 0)] },
   }
   const { accent = false, ...rest } = defaults[type]
-  return { id: uid(), w: DEFAULT_WIDTH[type], accent, ...rest } as unknown as Omit<Extract<Node, { type: T }>, 'x' | 'y'>
+  return { id: uid(), w: DEFAULT_WIDTH[type], accent, color: type === 'sticky' ? 'amber' : '', comments: [], ...rest } as unknown as Omit<Extract<Node, { type: T }>, 'x' | 'y'>
 }
 
 export const newItem = { cost: () => it(''), task: () => ck(''), stop: () => st('', ''), place: () => pl('', 0), option: (text = 'New option') => opt(text) }

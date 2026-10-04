@@ -277,7 +277,7 @@ function PeopleTab() {
     const full = name.trim()
     if (!full) return
     const short = full.split(/\s+/)[0]!
-    useBoard.getState().change((b) => ({ ...b, people: [...b.people, { name: short, full, ini: initials(full), role: 'Edit' }] }))
+    useBoard.getState().change((b) => ({ ...b, people: [...b.people, { name: short, full, ini: initials(full), role: 'Edit', userId: '', email: '', paypal: '', revolut: '' }] }))
     useBoard.getState().log(`invited ${short}`)
     setName('')
   }

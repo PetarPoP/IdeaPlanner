@@ -110,6 +110,8 @@ pub fn add_to_board(board: &mut Board, mail: Mail, card_id: String) {
         },
         icon: "envelope-simple".into(),
         accent: false,
+        color: String::new(),
+        comments: vec![],
         body: NodeBody::Email {
             from: mail.from,
             to: mail.to.first().cloned().unwrap_or_default(),
