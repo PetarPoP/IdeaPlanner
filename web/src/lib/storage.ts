@@ -22,6 +22,8 @@ const LOCAL_PREFIX = 'ideaPlanner.board.'
 const INDEX_KEY = 'ideaPlanner.index'
 const META_KEY = 'ideaPlanner.meta'
 const LAST_KEY = 'ideaPlanner.lastBoard'
+/** Boards changed on this device while the server was unreachable. */
+const PENDING_KEY = 'ideaPlanner.pendingSync'
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -107,7 +109,12 @@ function resolveApi(): Promise<Api | null> {
     // dev server and Tauri never do, so don't probe (a slow probe there is
     // aborted and the dev server logs it as an error).
     if (isTauri() || import.meta.env.DEV) return null
-    return health('').catch(() => null)
+    return health('').catch(() => {
+      // Unreachable (offline start): assume the server is there so saves
+      // queue up for it, and probe again next time.
+      api = undefined
+      return { base: '', inboxDomain: null }
+    })
   })()
   return api
 }
@@ -148,6 +155,10 @@ export type SyncState = 'local' | 'synced' | 'offline'
 export async function loadBoard(id: string): Promise<{ board: Board | null; sync: SyncState }> {
   const server = await resolveApi()
   const device = parse(await deviceStore().load(id))
+  if (server && device && isPending(id)) {
+    // Edited offline last time: the device copy is newer, send it up.
+    return { board: device, sync: await pushRemote(server.base, id, JSON.stringify(device)) }
+  }
   if (server) {
     try {
       const remote = parse(await remoteStore(server.base).load(id))
@@ -168,13 +179,47 @@ export async function saveBoard(board: Board): Promise<SyncState> {
   await deviceStore().save(board.id, doc)
   notifyBoards()
   const server = await resolveApi()
-  if (!server) return 'local'
+  return server ? pushRemote(server.base, board.id, doc) : 'local'
+}
+
+/** Saves to the server, remembering the board for a retry when that fails. */
+async function pushRemote(base: string, id: string, doc: string): Promise<SyncState> {
   try {
-    await remoteStore(server.base).save(board.id, doc)
+    await remoteStore(base).save(id, doc)
+    setPending(id, false)
     return 'synced'
   } catch {
+    setPending(id, true)
     return 'offline'
   }
+}
+
+const isPending = (id: string) => readJson<string[]>(PENDING_KEY, []).includes(id)
+
+function setPending(id: string, on: boolean) {
+  const ids = readJson<string[]>(PENDING_KEY, []).filter((x) => x !== id)
+  writeJson(PENDING_KEY, on ? [...ids, id] : ids)
+}
+
+/**
+ * Sends boards saved only on this device to the server. Returns the ids that
+ * made it, or null when there turned out to be no server at all.
+ */
+export async function syncPending(): Promise<string[] | null> {
+  const server = await resolveApi()
+  const ids = readJson<string[]>(PENDING_KEY, [])
+  if (!server) {
+    if (ids.length) writeJson(PENDING_KEY, [])
+    return null
+  }
+  const done: string[] = []
+  for (const id of ids) {
+    const doc = await deviceStore().load(id).catch(() => null)
+    if (!doc) setPending(id, false)
+    else if ((await pushRemote(server.base, id, doc)) === 'synced') done.push(id)
+    else break
+  }
+  return done
 }
 
 /** Per-device facts about a board that are not part of the document. */

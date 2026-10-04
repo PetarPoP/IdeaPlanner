@@ -415,3 +415,36 @@ body.space-pan [data-canvas] {
 body.space-pan [data-canvas] * {
   cursor: grab !important;
 }
+
+/* Printing the itinerary (PrintView): only it, on white paper. Other prints are left alone. */
+.print-root {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 16mm;
+  }
+  html:has(.print-root),
+  html:has(.print-root) body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+  body:has(> .print-root) > :not(.print-root) {
+    display: none !important;
+  }
+  .print-root {
+    display: block;
+    color: #1b1c26;
+    background: #fff;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .print-root h2 {
+    break-after: avoid;
+  }
+  .print-root tr,
+  .print-entry {
+    break-inside: avoid;
+  }
+}

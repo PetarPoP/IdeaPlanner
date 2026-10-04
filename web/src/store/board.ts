@@ -12,7 +12,7 @@ import type { SyncState } from '~/lib/storage'
 
 export type Tool = 'select' | 'hand' | 'pen' | 'erase' | 'connect'
 export type Panel = 'budget' | 'tasks' | 'people' | 'activity'
-export type Dialog = 'budget' | 'templates' | 'newBoard' | 'shortcuts'
+export type Dialog = 'budget' | 'templates' | 'newBoard' | 'shortcuts' | 'export'
 export type ViewMode = 'board' | 'list' | 'costs' | 'timeline'
 export type Selection = { nodes: string[] } | { edge: string } | { stroke: string } | null
 

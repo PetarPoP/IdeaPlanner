@@ -92,6 +92,21 @@ The bar at the top switches the same board between **Board** (the canvas),
 (every cost line, paid status, split and settle-up) and **Timeline** (day
 plans and bookings by date). Keys `1`–`4` do the same.
 
+## Export
+
+From the Costs or Timeline view (or `⌘/Ctrl E`): the itinerary as a PDF
+(prints a clean, light page; pick "Save as PDF"), costs as CSV, and day
+plans and bookings as a calendar (`.ics`). The desktop app saves files to
+Downloads.
+
+## Install and offline
+
+The web build is an installable app (manifest and service worker in
+`web/public`, registered only in production browser builds, never in Tauri).
+Service workers need HTTPS (or `localhost`). Offline, the app still opens
+and edits are saved on the device; they go to the server when the
+connection is back.
+
 ## Keyboard
 
 `S` select · `P` (or `H`) pan · `D` draw · `E` erase · `C` connect ·
@@ -99,5 +114,5 @@ hold `Space` or the middle mouse button to pan with any tool · drag on the
 board to select several cards, `Shift`-click to add · `⌘/Ctrl A` select all ·
 `⌘/Ctrl C`, `X`, `V` copy, cut, paste (pasting a link, an email or an image
 makes a card) · `⌘/Ctrl D` duplicate · arrows nudge · `Delete` remove ·
-`N` new idea · `F` fit · `1`–`4` views · `⌘/Ctrl K` find a board ·
+`N` new idea · `F` fit · `1`–`4` views · `⌘/Ctrl K` find a board · `⌘/Ctrl E` export ·
 `⌘/Ctrl Z` undo · `⇧⌘Z` redo · `?` all shortcuts.

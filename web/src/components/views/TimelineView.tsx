@@ -1,4 +1,4 @@
-import { Crosshair, Plus } from '@phosphor-icons/react'
+import { Crosshair, Export, Plus } from '@phosphor-icons/react'
 import type { Node } from '~/lib/model.gen'
 import { BOOKING_KINDS } from '~/lib/catalog'
 import { addDays, dayLabel, daysBetween, isIsoDate, toIso } from '~/lib/dates'
@@ -69,10 +69,16 @@ export function TimelineView() {
   return (
     <PageView
       actions={
-        <button type="button" onClick={addDay} className="btn btn-primary">
-          <Plus />
-          Add day
-        </button>
+        <>
+          <button type="button" title="Export (Ctrl+E)" onClick={() => useBoard.getState().toggleDialog('export')} className="btn btn-secondary">
+            <Export />
+            Export
+          </button>
+          <button type="button" onClick={addDay} className="btn btn-primary">
+            <Plus />
+            Add day
+          </button>
+        </>
       }
     >
       {!sorted.length && !unscheduled.length && (

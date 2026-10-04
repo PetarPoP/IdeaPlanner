@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { fromTemplate } from '~/lib/templates'
-import { loadBoard, rememberBoard, saveBoard } from '~/lib/storage'
+import { loadBoard, rememberBoard, saveBoard, syncPending } from '~/lib/storage'
 import { gesture } from '~/components/board/interaction'
 import { useBoard } from '~/store/board'
 
@@ -54,6 +54,20 @@ export function useBoardSession(boardId: string) {
       window.removeEventListener('pagehide', flush)
     }
   }, [])
+
+  // Boards saved only on this device while offline go up once the network is back.
+  useEffect(() => {
+    const resync = () =>
+      void syncPending().then((done) => {
+        const s = useBoard.getState()
+        if (!s.board || s.sync !== 'offline') return
+        if (done == null) s.setSync('local')
+        else if (done.includes(s.board.id)) s.setSync('synced')
+      })
+    resync()
+    window.addEventListener('online', resync)
+    return () => window.removeEventListener('online', resync)
+  }, [])
 }
 
 /** Keeps the store's window width current (layout switches at 760px). */
@@ -98,6 +112,11 @@ export function useShortcuts() {
       if (mod && k === 'y') {
         e.preventDefault()
         s.redo()
+        return
+      }
+      if (mod && k === 'e') {
+        e.preventDefault()
+        s.toggleDialog('export')
         return
       }
       if (mod && k === 'd') {

@@ -8,6 +8,7 @@ import { money } from '~/lib/money'
 import { isMobileWidth, useBoard } from '~/store/board'
 import { DateField, Field, PlanPaidBar, cx } from '../ui'
 import { Popover } from './Popover'
+import { SyncBadge } from './SyncBadge'
 import { ViewSwitcher } from './ViewSwitcher'
 
 export function TopBar() {
@@ -44,6 +45,7 @@ export function TopBar() {
             className="w-[110px] min-w-[70px] flex-[1_1_110px] text-[15px] font-medium text-ellipsis md:w-[180px] md:min-w-[90px] md:flex-[1_1_180px]"
           />
           <DateChip compact={!wide} />
+          <SyncBadge label={xwide} />
         </div>
         {!mobile && (
           <div className="flex flex-1 justify-center">

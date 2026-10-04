@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { CheckCircle, Circle, Crosshair, PencilSimple } from '@phosphor-icons/react'
+import { CheckCircle, Circle, Crosshair, Export, PencilSimple } from '@phosphor-icons/react'
 import { useShallow } from 'zustand/react/shallow'
 import type { CostItem, Stop } from '~/lib/model.gen'
 import type { CostedNode } from '~/lib/budget'
@@ -28,10 +28,16 @@ export function CostsView() {
   return (
     <PageView
       actions={
-        <button type="button" onClick={() => useBoard.getState().toggleDialog('budget')} className="btn btn-secondary">
-          <PencilSimple />
-          Edit budget
-        </button>
+        <>
+          <button type="button" title="Export (Ctrl+E)" onClick={() => useBoard.getState().toggleDialog('export')} className="btn btn-secondary">
+            <Export />
+            Export
+          </button>
+          <button type="button" onClick={() => useBoard.getState().toggleDialog('budget')} className="btn btn-secondary">
+            <PencilSimple />
+            Edit budget
+          </button>
+        </>
       }
     >
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">

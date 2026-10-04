@@ -7,11 +7,13 @@ import { Sidebar } from './chrome/Sidebar'
 import { SelectionBar, Toolbar, ZoomBar } from './chrome/Toolbar'
 import { TopBar } from './chrome/TopBar'
 import { BudgetDialog } from './dialogs/BudgetDialog'
+import { ExportDialog } from './dialogs/ExportDialog'
 import { ShortcutsDialog } from './dialogs/ShortcutsDialog'
 import { TemplatesDialog } from './dialogs/TemplatesDialog'
 import { SidePanel } from './panel/SidePanel'
 import { CostsView } from './views/CostsView'
 import { ListView } from './views/ListView'
+import { PrintView } from './views/PrintView'
 import { TimelineView } from './views/TimelineView'
 
 export function BoardScreen({ boardId }: { boardId: string }) {
@@ -51,6 +53,8 @@ export function BoardScreen({ boardId }: { boardId: string }) {
           {dialog === 'budget' && <BudgetDialog />}
           {(dialog === 'templates' || dialog === 'newBoard') && <TemplatesDialog key={dialog} initial={dialog === 'newBoard' ? 'new' : 'replace'} />}
           {dialog === 'shortcuts' && <ShortcutsDialog />}
+          {dialog === 'export' && <ExportDialog />}
+          <PrintView />
         </>
       ) : (
         <div className="grid h-full place-items-center text-sm text-neutral-500">Loading board…</div>

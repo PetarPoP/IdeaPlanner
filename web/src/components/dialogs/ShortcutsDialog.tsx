@@ -36,6 +36,7 @@ const GROUPS: ReadonlyArray<{ title: string; keys: ReadonlyArray<[string, string
       ['Ctrl + wheel', 'Zoom'],
       ['F', 'Fit to screen'],
       ['Ctrl K', 'Find a board'],
+      ['Ctrl E', 'Export (PDF, CSV, calendar)'],
       ['Esc', 'Close or deselect'],
     ],
   },
