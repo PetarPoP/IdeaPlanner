@@ -51,6 +51,8 @@
   --shadow-card: 0 0 0 1px #3f424d, 0 8px 24px rgba(0, 0, 0, 0.35);
   --shadow-card-active: 0 0 0 1.5px var(--color-accent),
     0 0 28px color-mix(in srgb, var(--color-accent) 30%, transparent), 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-card-lift: 0 0 0 1.5px var(--color-accent), 0 0 32px color-mix(in srgb, var(--color-accent) 35%, transparent),
+    0 24px 48px rgba(0, 0, 0, 0.55);
   --shadow-glow: 0 0 14px color-mix(in srgb, var(--color-accent) 35%, transparent);
   --shadow-inset: inset 0 0 0 1px #3f424d;
 
@@ -59,6 +61,103 @@
     to {
       stroke-dashoffset: -20;
     }
+  }
+}
+
+/*
+ * Motion: short, eased, and only on entry, so editing never waits on an
+ * animation. Turned off for people who ask for reduced motion.
+ */
+@keyframes ip-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+@keyframes ip-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@keyframes ip-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes ip-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ip-modal {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+@keyframes ip-slide-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes ip-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes ip-sheet {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes ip-page {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@layer utilities {
+  .anim-card {
+    animation: ip-card-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-pop {
+    animation: ip-pop 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* Tailwind centres with `translate`, so these animate `transform` without fighting it. */
+  .anim-drop {
+    animation: ip-drop 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-fade {
+    animation: ip-fade 0.18s ease-out both;
+  }
+  .anim-modal {
+    animation: ip-modal 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-slide-left {
+    animation: ip-slide-left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-slide-right {
+    animation: ip-slide-right 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-sheet {
+    animation: ip-sheet 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-page {
+    animation: ip-page 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
   }
 }
 
@@ -279,4 +378,40 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+}
+
+@layer components {
+  /* Native date/time inputs, dressed for the dark cards. */
+  .date-field {
+    min-width: 0;
+    padding: 3px 6px;
+    font-size: 13px;
+    color: var(--color-text);
+    color-scheme: dark;
+    background: var(--color-bg);
+    border: 1px solid transparent;
+    border-radius: 6px;
+  }
+  .date-field:hover {
+    border-color: var(--color-neutral-800);
+  }
+  .date-field:focus-visible {
+    border-color: var(--color-accent);
+    outline: none;
+  }
+  .date-field.is-empty {
+    color: var(--color-neutral-600);
+  }
+  .date-field::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+}
+
+/* Holding space: the whole board becomes a pan handle. */
+body.space-pan [data-canvas] {
+  cursor: grab !important;
+}
+body.space-pan [data-canvas] * {
+  cursor: grab !important;
 }

@@ -2,6 +2,7 @@
 
 use std::path::Path;
 
+use ideaplanner_core::BoardSummary;
 use rusqlite::{params, Connection, OptionalExtension};
 
 pub struct Db(Connection);
@@ -37,6 +38,36 @@ impl Db {
             .optional()
     }
 
+    /// Every board on the device, most recently saved first.
+    pub fn list(&self) -> rusqlite::Result<Vec<BoardSummary>> {
+        let mut stmt = self.0.prepare(
+            "SELECT id,
+                    coalesce(json_extract(doc, '$.title'), ''),
+                    coalesce(json_extract(doc, '$.icon'), ''),
+                    coalesce(json_extract(doc, '$.date'), ''),
+                    coalesce(json_extract(doc, '$.endDate'), ''),
+                    (julianday(updated_at) - 2440587.5) * 86400000.0
+             FROM boards ORDER BY updated_at DESC",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(BoardSummary {
+                id: r.get(0)?,
+                title: r.get(1)?,
+                icon: r.get(2)?,
+                date: r.get(3)?,
+                end_date: r.get(4)?,
+                updated_at: r.get(5)?,
+            })
+        })?;
+        rows.collect()
+    }
+
+    pub fn delete(&self, id: &str) -> rusqlite::Result<()> {
+        self.0
+            .execute("DELETE FROM boards WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
     pub fn save(&self, id: &str, doc: &str) -> rusqlite::Result<()> {
         self.0.execute(
             "INSERT INTO boards (id, doc) VALUES (?1, ?2)
@@ -59,5 +90,19 @@ mod tests {
         db.save("a", "1").unwrap();
         db.save("a", "2").unwrap();
         assert_eq!(db.load("a").unwrap().as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn lists_and_deletes() {
+        let db = Db::in_memory().unwrap();
+        db.save("a", r#"{"title":"Trip","icon":"van","date":"2027-06-12"}"#)
+            .unwrap();
+        let list = db.list().unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].title, "Trip");
+        assert_eq!(list[0].end_date, "");
+        assert!(list[0].updated_at > 1.6e12);
+        db.delete("a").unwrap();
+        assert!(db.list().unwrap().is_empty());
     }
 }

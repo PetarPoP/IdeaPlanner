@@ -6,7 +6,7 @@ mod db;
 
 use std::sync::Mutex;
 
-use ideaplanner_core::{is_valid_id, Board, BoardError};
+use ideaplanner_core::{is_valid_id, Board, BoardError, BoardSummary};
 use serde::Serialize;
 use tauri::{Manager, State};
 
@@ -51,6 +51,19 @@ fn save_board(db: State<'_, Mutex<Db>>, id: String, doc: String) -> CmdResult<()
     Ok(())
 }
 
+#[tauri::command]
+fn list_boards(db: State<'_, Mutex<Db>>) -> CmdResult<Vec<BoardSummary>> {
+    Ok(db.lock().expect("db lock").list()?)
+}
+
+#[tauri::command]
+fn delete_board(db: State<'_, Mutex<Db>>, id: String) -> CmdResult<()> {
+    if !is_valid_id(&id) {
+        return Err(CommandError::InvalidId);
+    }
+    Ok(db.lock().expect("db lock").delete(&id)?)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -62,7 +75,12 @@ pub fn run() {
             app.manage(Mutex::new(db));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![load_board, save_board])
+        .invoke_handler(tauri::generate_handler![
+            load_board,
+            save_board,
+            list_boards,
+            delete_board
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Idea Planner");
 }

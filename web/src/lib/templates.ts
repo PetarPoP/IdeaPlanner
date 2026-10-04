@@ -57,25 +57,27 @@ export const TEMPLATES: ReadonlyArray<{ key: TemplateKey; icon: string; name: st
   { key: 'blank', icon: 'plus', name: 'Blank board', desc: 'Start from an empty canvas.' },
 ]
 
-type Content = Pick<Board, 'title' | 'icon' | 'date' | 'cap' | 'cur' | 'nodes' | 'edges'>
+type Content = Pick<Board, 'title' | 'icon' | 'date' | 'endDate' | 'place' | 'cap' | 'cur' | 'nodes' | 'edges'>
 
 const CONTENT: Record<TemplateKey, () => Content> = {
   roadtrip: () => ({
     title: 'Portugal road trip',
     icon: 'van',
     date: '2027-06-12',
+    endDate: '2027-06-19',
+    place: 'Lisbon → Algarve',
     cap: '5000',
     cur: '€',
     nodes: [
       { ...card('map', 0, 0, 520, 'Route', 'map-trifold'), type: 'map', input: 'Lisbon → Sintra → Lagos → Sagres' },
-      { ...card('d1', 580, 0, 300, 'Day 1 · Lisbon', 'calendar-dots'), type: 'itinerary', date: 'Sat, Jun 12', stops: [st('10:00', 'Lisbon Airport'), st('12:30', 'Time Out Market Lisboa', 90), st('15:00', 'Alfama, Lisbon'), st('19:30', 'Miradouro da Senhora do Monte')] },
-      { ...card('d2', 920, 0, 300, 'Day 2 · Sintra', 'calendar-dots'), type: 'itinerary', date: 'Sun, Jun 13', stops: [st('09:00', 'Pena Palace, Sintra', 120), st('13:00', 'Quinta da Regaleira', 60), st('17:30', 'Cabo da Roca')] },
-      { ...card('d3', 1260, 0, 300, 'Day 3 · South', 'calendar-dots'), type: 'itinerary', date: 'Mon, Jun 14', stops: [st('09:30', 'Lisbon'), st('12:30', 'Comporta'), st('18:00', 'Lagos, Portugal')] },
+      { ...card('d1', 580, 0, 300, 'Day 1 · Lisbon', 'calendar-dots'), type: 'itinerary', date: '2027-06-12', stops: [st('10:00', 'Lisbon Airport'), st('12:30', 'Time Out Market Lisboa', 90), st('15:00', 'Alfama, Lisbon'), st('19:30', 'Miradouro da Senhora do Monte')] },
+      { ...card('d2', 920, 0, 300, 'Day 2 · Sintra', 'calendar-dots'), type: 'itinerary', date: '2027-06-13', stops: [st('09:00', 'Pena Palace, Sintra', 120), st('13:00', 'Quinta da Regaleira', 60), st('17:30', 'Cabo da Roca')] },
+      { ...card('d3', 1260, 0, 300, 'Day 3 · South', 'calendar-dots'), type: 'itinerary', date: '2027-06-14', stops: [st('09:30', 'Lisbon'), st('12:30', 'Comporta'), st('18:00', 'Lagos, Portugal')] },
       sec('acc', 0, 580, 'Accommodation', 'bed', [it('Alfama apartment · 3 nights', 420, true, 0), it('Villa near Lagos · 4 nights', 660)], '1200'),
       sec('tra', 320, 580, 'Transport', 'car-profile', [it('9-seat van, 7 days', 520, true, 2), it('Fuel & tolls', 220)]),
       sec('act', 640, 580, 'Activities', 'person-simple-swim', [it('Surf lesson ×6', 270), it('Benagil boat tour', 150)]),
       sec('food', 960, 580, 'Food & drinks', 'fork-knife', [it('Groceries kitty', 300, true, 1), it('Two dinners out', 200)]),
-      { ...card('fl', 1300, 580, 280, 'Flights', 'airplane-tilt'), type: 'booking', kind: 'Flight', from: 'ZAG', to: 'LIS', when: 'Jun 12 · 07:05', conf: 'TP4K9Q', cost: '840', paid: true, payer: 0 },
+      { ...card('fl', 1300, 580, 280, 'Flights', 'airplane-tilt'), type: 'booking', kind: 'Flight', from: 'ZAG', to: 'LIS', startDate: '2027-06-12', startTime: '07:05', endDate: '2027-06-19', endTime: '18:40', conf: 'TP4K9Q', cost: '840', paid: true, payer: 0 },
       { ...card('pack', 0, 900, 280, 'Packing list', 'backpack'), type: 'checklist', items: [ck('Passports', true, 0), ck('Sunscreen SPF50', true, 1), ck('Wetsuits ×2', false, 2), ck('Portable speaker', false, 5), ck('Beach towels')] },
       note('idea', 320, 900, 260, 'Night idea', 'lightbulb', 'Sunset at Miradouro da Senhora do Monte, then fado in Alfama.', [1, 2, 3, 4], 'Maja'),
       { ...card('poll', 640, 920, 280, 'Day 5 — where to?', 'chart-bar'), type: 'poll', options: [opt('Benagil caves', [1, 4, 5]), opt('Sagres & Cabo São Vicente', [2, 3])] },
@@ -88,6 +90,8 @@ const CONTENT: Record<TemplateKey, () => Content> = {
     title: 'Office Secret Santa',
     icon: 'gift',
     date: '2026-12-18',
+    endDate: '',
+    place: 'Office, 3rd floor',
     cap: '250',
     cur: '€',
     nodes: [
@@ -104,6 +108,8 @@ const CONTENT: Record<TemplateKey, () => Content> = {
     title: 'Luka turns 30',
     icon: 'cake',
     date: '2026-11-07',
+    endDate: '',
+    place: 'Zagreb Upper Town',
     cap: '800',
     cur: '€',
     nodes: [
@@ -120,6 +126,8 @@ const CONTENT: Record<TemplateKey, () => Content> = {
     title: 'Kitchen renovation',
     icon: 'hammer',
     date: '2027-03-01',
+    endDate: '2027-04-15',
+    place: 'Home',
     cap: '12000',
     cur: '€',
     nodes: [
@@ -136,13 +144,15 @@ const CONTENT: Record<TemplateKey, () => Content> = {
     title: 'Sara & Tom wedding',
     icon: 'heart',
     date: '2027-09-04',
+    endDate: '',
+    place: 'Momjan, Croatia',
     cap: '22000',
     cur: '€',
     nodes: [
       sec('v', 0, 0, 'Venue & food', 'champagne', [it('Vineyard venue', 6500, true, 4), it('Catering · 120 guests', 7200)]),
       sec('ven', 340, 0, 'Vendors', 'storefront', [it('Photographer', 1800), it('Band', 2200), it('Flowers', 900)]),
       { ...card('gl', 680, 0, 280, 'Guests', 'users'), type: 'checklist', items: [ck('Save-the-dates sent', true, 4), ck('Final head count', false, 5), ck('Seating chart', false, 4)] },
-      { ...card('tl', 0, 300, 300, 'The day', 'calendar-dots'), type: 'itinerary', date: 'Sat, Sep 4', stops: [st('15:00', 'Getting ready'), st('17:00', 'Ceremony'), st('19:00', 'Dinner'), st('21:30', 'First dance')] },
+      { ...card('tl', 0, 300, 300, 'The day', 'calendar-dots'), type: 'itinerary', date: '2027-09-04', stops: [st('15:00', 'Getting ready'), st('17:00', 'Ceremony'), st('19:00', 'Dinner'), st('21:30', 'First dance')] },
       { ...card('map', 340, 300, 420, 'Venue', 'map-trifold'), type: 'map', input: 'Momjan, Croatia' },
       { ...card('ck', 800, 300, 280, 'Cake', 'chart-bar'), type: 'poll', options: [opt('Lemon & elderflower', [4, 5]), opt('Chocolate', [0])] },
     ],
@@ -152,6 +162,8 @@ const CONTENT: Record<TemplateKey, () => Content> = {
     title: 'Untitled plan',
     icon: 'sparkle',
     date: '',
+    endDate: '',
+    place: '',
     cap: '1000',
     cur: '€',
     nodes: [
@@ -190,6 +202,7 @@ export const DEFAULT_WIDTH: Record<NodeType, number> = {
   checklist: 260,
   link: 260,
   image: 260,
+  email: 320,
 }
 
 /** A fresh card of `type`, without position. */
@@ -204,7 +217,8 @@ export function newCard<T extends NodeType>(type: T): Omit<Extract<Node, { type:
     santa: { title: 'Name draw', icon: 'shuffle', type: 'santa', cap: '30', pairs: null, revealed: [] },
     map: { title: 'Map', icon: 'map-trifold', type: 'map', input: '' },
     itinerary: { title: 'New day', icon: 'calendar-dots', type: 'itinerary', date: '', stops: [st('', '')] },
-    booking: { title: 'Booking', icon: 'airplane-tilt', type: 'booking', kind: 'Flight', from: '', to: '', when: '', conf: '', cost: '', paid: false, payer: 0 },
+    booking: { title: 'Booking', icon: 'airplane-tilt', type: 'booking', kind: 'Flight', from: '', to: '', startDate: '', startTime: '', endDate: '', endTime: '', conf: '', cost: '', paid: false, payer: 0 },
+    email: { title: 'Email', icon: 'envelope-simple', type: 'email', from: '', to: '', subject: '', date: '', body: '' },
     places: { title: 'Places to visit', icon: 'push-pin', type: 'places', items: [pl('', 0)] },
   }
   const { accent = false, ...rest } = defaults[type]

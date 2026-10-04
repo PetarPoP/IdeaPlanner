@@ -6,7 +6,8 @@ import { dirLink } from '~/lib/maps'
 import { money } from '~/lib/money'
 import { newItem } from '~/lib/templates'
 import { addRow, patchNode, patchRow, removeRow, useBoard, useNode } from '~/store/board'
-import { AddRowButton, CostField, Field, RemoveButton } from '../ui'
+import { dayLabel } from '~/lib/dates'
+import { AddRowButton, CostField, DateField, Field, RemoveButton } from '../ui'
 import { useBoardMeta } from './hooks'
 
 export function ItineraryCard({ id }: { id: string }) {
@@ -21,13 +22,14 @@ export function ItineraryCard({ id }: { id: string }) {
   return (
     <div className="flex flex-col px-3 pb-3">
       <div className="mb-1.5 flex items-center gap-2">
-        <CalendarBlank className="text-accent-300" />
-        <Field
+        <CalendarBlank className="flex-none text-accent-300" />
+        <DateField
           value={n.date}
-          onValue={(date, m) => patchNode<'itinerary'>(id, (x) => ({ ...x, date }), m)}
-          placeholder="Date"
-          className="flex-1 text-xs text-accent-300"
+          onValue={(date) => patchNode<'itinerary'>(id, (x) => ({ ...x, date }))}
+          aria-label="Day"
+          className="text-xs text-accent-300"
         />
+        <span className="flex-1 truncate text-[11px] text-neutral-500">{dayLabel(n.date).split(',')[0]}</span>
         <span className="text-xs text-neutral-400">{total ? money(cur, total) : ''}</span>
       </div>
       {n.stops.map((s, i) => {

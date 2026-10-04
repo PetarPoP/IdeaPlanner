@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Icon } from '@phosphor-icons/react'
-import { ArrowRight, Check, CheckCircle, CheckSquare, ClockCounterClockwise, Copy, Link as LinkIcon, PencilSimple, Square, Users, Wallet, X } from '@phosphor-icons/react'
+import { ArrowRight, Check, EnvelopeSimple, CheckCircle, CheckSquare, ClockCounterClockwise, Copy, Link as LinkIcon, PencilSimple, Square, Users, Wallet, X } from '@phosphor-icons/react'
 import { QRCodeSVG } from 'qrcode.react'
 import type { Role, Task } from '~/lib/model.gen'
 import { nodeTotal, summarize } from '~/lib/budget'
@@ -9,6 +9,7 @@ import { timeAgo } from '~/lib/dates'
 import { NamedIcon } from '~/lib/icons'
 import { money, num } from '~/lib/money'
 import { shareUrl } from '~/lib/storage'
+import { useInboxAddress } from '~/hooks/useInbox'
 import type { Panel } from '~/store/board'
 import { isMobileWidth, patchRow, useBoard } from '~/store/board'
 import { Bar, PlanPaidBar, Seg, Stepper, cx } from '../ui'
@@ -31,8 +32,8 @@ export function SidePanel() {
       className={cx(
         'absolute z-50 flex flex-col',
         mobile
-          ? 'inset-x-0 bottom-0 h-[72%] rounded-t-[18px] bg-surface shadow-lg'
-          : 'top-[70px] right-3 bottom-3 z-[44] w-[380px] rounded-[14px] bg-[color-mix(in_srgb,var(--color-surface)_96%,transparent)] shadow-md backdrop-blur-md',
+          ? 'anim-sheet inset-x-0 bottom-0 h-[72%] rounded-t-[18px] bg-surface shadow-lg'
+          : 'anim-slide-right top-[70px] right-3 bottom-3 z-[44] w-[380px] rounded-[14px] bg-[color-mix(in_srgb,var(--color-surface)_96%,transparent)] shadow-md backdrop-blur-md',
       )}
     >
       {mobile && <div className="mt-2 h-1 w-10 self-center rounded-full bg-neutral-700" />}
@@ -90,7 +91,7 @@ export function SplitStepper() {
 }
 
 function BudgetTab() {
-  const { board, sum, m, msg, planPct, paidPct, over } = useCapMessage()
+  const { sum, m, msg, planPct, paidPct, over } = useCapMessage()
   const set = useBoard((s) => s.set)
   const maxTotal = Math.max(1, ...sum.costed.map(nodeTotal))
 
@@ -134,23 +135,41 @@ function BudgetTab() {
           )
         })}
       </div>
-      <div
-        className="flex flex-col gap-3 rounded-xl p-3.5"
-        style={{ background: 'linear-gradient(135deg,var(--color-accent-900),var(--color-bg))', boxShadow: 'inset 0 0 0 1px var(--color-accent-800)' }}
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] font-medium">Split between</span>
-          <div className="ml-auto">
-            <SplitStepper />
-          </div>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-[32px] font-medium tracking-[-0.03em] text-accent-100">{m(sum.perPerson)}</span>
-          <span className="text-[13px] text-accent-300">
-            per person · {m(sum.total)} ÷ {board.splitN}
-          </span>
+      <SplitBox />
+      <Balances />
+    </>
+  )
+}
+
+/** "Split between N · €X per person". */
+export function SplitBox() {
+  const { board, sum, m } = useCapMessage()
+  return (
+    <div
+      className="flex flex-col gap-3 rounded-xl p-3.5"
+      style={{ background: 'linear-gradient(135deg,var(--color-accent-900),var(--color-bg))', boxShadow: 'inset 0 0 0 1px var(--color-accent-800)' }}
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-medium">Split between</span>
+        <div className="ml-auto">
+          <SplitStepper />
         </div>
       </div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-[32px] font-medium tracking-[-0.03em] text-accent-100">{m(sum.perPerson)}</span>
+        <span className="text-[13px] text-accent-300">
+          per person · {m(sum.total)} ÷ {board.splitN}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** What each person paid, their balance, and who pays whom to settle up. */
+export function Balances() {
+  const { board, sum, m } = useCapMessage()
+  return (
+    <>
       <div className="flex flex-col">
         <div className="kicker grid grid-cols-[1fr_70px_76px] pb-1.5">
           <span>Paid so far</span>
@@ -252,6 +271,7 @@ function PeopleTab() {
   const [name, setName] = useState('')
   const [copied, setCopied] = useState(false)
   const link = shareUrl(id)
+  const inbox = useInboxAddress(id)
 
   const invite = () => {
     const full = name.trim()
@@ -309,6 +329,16 @@ function PeopleTab() {
           </>
         ) : (
           <span className="text-xs text-neutral-500">Sharing links need the web version of Idea Planner.</span>
+        )}
+        {inbox && (
+          <div className="flex flex-col gap-1 rounded-[10px] bg-bg p-2.5">
+            <span className="flex items-center gap-1.5 text-xs text-neutral-300">
+              <EnvelopeSimple className="text-accent" />
+              Forward emails to this board
+            </span>
+            <span className="font-mono text-xs break-all text-accent-200 select-all">{inbox}</span>
+            <span className="text-[11px] text-neutral-500">Booking confirmations sent here show up as email cards.</span>
+          </div>
         )}
       </div>
       <div className="flex flex-col gap-0.5">

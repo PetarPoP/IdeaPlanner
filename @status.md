@@ -9,9 +9,10 @@
   Phosphor icons. Same build runs in browser, Tauri desktop and mobile.
 - `crates/core/`: Rust board model + validation; generates
   `web/src/lib/model.gen.ts` (ts-rs).
-- `src-tauri/`: Tauri 2, boards stored in SQLite (`load_board`/`save_board`).
-- `server/`: Axum 0.8 + sqlx/Postgres, serves the web build and
-  `/api/boards/{id}`.
+- `src-tauri/`: Tauri 2, boards stored in SQLite (`load_board`,
+  `save_board`, `list_boards`, `delete_board`).
+- `server/`: Axum 0.8 + sqlx/Postgres, serves the web build,
+  `/api/boards/{id}` and the email inbox `/api/inbox`.
 
 ## Completed
 - [x] Infinite canvas: pan, pinch/wheel zoom, snap-to-grid drag, connections,
@@ -25,6 +26,13 @@
       templates dialog, responsive phone layout.
 - [x] Persistence: localStorage / SQLite on device, Postgres on server,
       share links `/b/<id>`.
+- [x] Feedback round 2: several boards per device (sidebar with search,
+      shared-with-me, trash; new board from a template), Board / Cards /
+      Costs / Timeline views, board start/end dates and place, booking
+      check-in/check-out pickers, email card (paste, .eml, server inbox at
+      `POST /api/inbox`), drag cards from anywhere, selection box and
+      multi-select, group move/delete, copy/cut/paste, eraser and pen
+      colours, middle-mouse/space pan, new shortcuts, entry animations.
 - [x] CI: typecheck, vitest, build, fmt, clippy, cargo test, generated type
       drift check.
 
@@ -36,4 +44,6 @@
 - Photo storage outside the board document for large boards.
 
 ## Tech debt / known issues
+- The board list, "shared with me" and trash live per device (localStorage
+  index and SQLite); there are no accounts to sync them yet.
 - Map embeds rely on Google Maps' public embed URLs.

@@ -92,6 +92,26 @@ impl Board {
         Ok(())
     }
 
+    pub fn summary(&self, updated_at: f64) -> BoardSummary {
+        BoardSummary {
+            id: self.id.clone(),
+            title: self.title.clone(),
+            icon: self.icon.clone(),
+            date: self.date.clone(),
+            end_date: self.end_date.clone(),
+            updated_at,
+        }
+    }
+
+    /// A free spot for a new card of width `w`: under the board's lowest card,
+    /// lined up with its leftmost one.
+    pub fn free_spot(&self) -> (f64, f64) {
+        let x = self.nodes.iter().map(|n| n.x).fold(f64::INFINITY, f64::min);
+        // Card heights are only known to the UI; assume a tall one.
+        let y = self.nodes.iter().map(|n| n.y + 400.0).fold(0.0, f64::max);
+        (if x.is_finite() { x } else { 0.0 }, y)
+    }
+
     /// Drops edges whose cards no longer exist (e.g. after a concurrent delete).
     pub fn prune_dangling_edges(&mut self) {
         let ids: HashSet<&str> = self.nodes.iter().map(|n| n.id.as_str()).collect();
@@ -119,6 +139,8 @@ mod tests {
             title: "Trip".into(),
             icon: "van".into(),
             date: String::new(),
+            end_date: String::new(),
+            place: String::new(),
             cap: "1000".into(),
             cur: "€".into(),
             split_n: 2,
@@ -182,6 +204,25 @@ mod tests {
             Board::from_json(&json),
             Err(BoardError::Malformed(_))
         ));
+    }
+
+    #[test]
+    fn finds_a_free_spot_below_the_cards() {
+        let mut b = board();
+        b.nodes[0].x = -40.0;
+        b.nodes[0].y = 100.0;
+        assert_eq!(b.free_spot(), (-40.0, 500.0));
+        b.nodes.clear();
+        assert_eq!(b.free_spot(), (0.0, 0.0));
+    }
+
+    #[test]
+    fn reads_boards_saved_before_new_fields() {
+        let json = serde_json::to_string(&board())
+            .unwrap()
+            .replace(r#""endDate":"","place":"","#, "");
+        assert!(!json.contains("endDate"));
+        assert_eq!(Board::from_json(&json).unwrap(), board());
     }
 
     #[test]

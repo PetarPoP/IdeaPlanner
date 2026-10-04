@@ -199,3 +199,29 @@ export function Stepper({ value, onDec, onInc, label }: { value: number; onDec: 
     </div>
   )
 }
+
+/**
+ * A native date (or time) input: typeable on desktop, the system picker on
+ * phones. One change is one undo step.
+ */
+export function DateField({
+  value,
+  onValue,
+  type = 'date',
+  className,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> & {
+  value: string
+  onValue: (v: string) => void
+  type?: 'date' | 'time'
+}) {
+  return (
+    <input
+      {...rest}
+      type={type}
+      value={value}
+      onChange={(e) => onValue(e.target.value)}
+      className={cx('date-field', !value && 'is-empty', className)}
+    />
+  )
+}

@@ -5,10 +5,14 @@
 //! - `DATABASE_URL`  Postgres (e.g. Neon). Without it boards live in memory.
 //! - `WEB_DIST`      built web app, default `web/dist/client`.
 //! - `PORT`          default 3001.
+//! - `INBOX_TOKEN`, `INBOX_DOMAIN`  turn on email-in: mail sent to
+//!   `board-<id>@INBOX_DOMAIN` and forwarded as raw MIME to `POST /api/inbox`
+//!   with `Authorization: Bearer INBOX_TOKEN` becomes an email card.
 //! - `CORS_ORIGINS`  comma-separated origins allowed to call the API
 //!   (needed when a desktop/mobile build syncs through `VITE_API_URL`).
 
 mod api;
+mod inbox;
 mod store;
 
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
@@ -62,7 +66,11 @@ async fn main() -> anyhow::Result<()> {
     // Every unknown path is a client route (e.g. /b/<id>), so it gets the app shell.
     let app_shell = ServeDir::new(&dist).fallback(ServeFile::new(dist.join("index.html")));
 
-    let app = api::router(Arc::new(store))
+    let state = api::AppState {
+        store,
+        inbox: inbox::InboxConfig::from_env(),
+    };
+    let app = api::router(Arc::new(state))
         .fallback_service(app_shell)
         .layer(cors())
         .layer(CompressionLayer::new())

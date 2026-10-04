@@ -1,9 +1,9 @@
 import type { Icon as PhosphorIcon, IconWeight } from '@phosphor-icons/react'
 import {
   AirplaneTilt, Backpack, Bag, Bed, Binoculars, Cake, CalendarDots, CarProfile, Champagne, ChartBar,
-  CheckSquare, Coins, Confetti, ForkKnife, Gift, Hammer, Heart, Image, Lightbulb, Link, ListHeart,
-  MapTrifold, Package, PersonSimpleSwim, Plus, PushPin, Receipt, Scroll, Shuffle, Sparkle, Storefront,
-  Ticket, UmbrellaSimple, Users, Van,
+  CheckSquare, Coins, Confetti, EnvelopeSimple, ForkKnife, Gift, Hammer, Heart, House, Image, Lightbulb, Link, ListHeart,
+  MapTrifold, Mountains, Package, PersonSimpleSwim, Plus, PushPin, Receipt, Scroll, Shuffle, Sparkle, Storefront,
+  Suitcase, Tent, Ticket, UmbrellaSimple, Users, Van,
 } from '@phosphor-icons/react'
 
 /**
@@ -24,15 +24,18 @@ const REGISTRY: Record<string, PhosphorIcon> = {
   'check-square': CheckSquare,
   coins: Coins,
   confetti: Confetti,
+  'envelope-simple': EnvelopeSimple,
   'fork-knife': ForkKnife,
   gift: Gift,
   hammer: Hammer,
   heart: Heart,
+  house: House,
   image: Image,
   lightbulb: Lightbulb,
   link: Link,
   'list-heart': ListHeart,
   'map-trifold': MapTrifold,
+  mountains: Mountains,
   package: Package,
   'person-simple-swim': PersonSimpleSwim,
   plus: Plus,
@@ -42,6 +45,8 @@ const REGISTRY: Record<string, PhosphorIcon> = {
   shuffle: Shuffle,
   sparkle: Sparkle,
   storefront: Storefront,
+  suitcase: Suitcase,
+  tent: Tent,
   ticket: Ticket,
   'umbrella-simple': UmbrellaSimple,
   users: Users,
@@ -54,6 +59,9 @@ interface Props {
   weight?: IconWeight
   className?: string
 }
+
+/** Icons people can pick for a board. */
+export const BOARD_ICONS = ['van', 'airplane-tilt', 'suitcase', 'tent', 'mountains', 'umbrella-simple', 'gift', 'cake', 'confetti', 'heart', 'champagne', 'hammer', 'house', 'sparkle'] as const
 
 export function NamedIcon({ name, size = '1em', weight, className }: Props) {
   const Cmp = REGISTRY[name] ?? Sparkle

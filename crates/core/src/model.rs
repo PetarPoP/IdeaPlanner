@@ -26,9 +26,15 @@ model! {
         pub id: String,
         pub title: String,
         pub icon: String,
-        /// ISO date (`YYYY-MM-DD`) of the event, or empty.
+        /// ISO date (`YYYY-MM-DD`) the plan starts, or empty.
         #[serde(default)]
         pub date: String,
+        /// ISO date the plan ends, or empty for a one-day plan.
+        #[serde(default)]
+        pub end_date: String,
+        /// Where it happens, free text ("Lisbon → Algarve").
+        #[serde(default)]
+        pub place: String,
         /// Total budget.
         #[serde(default)]
         pub cap: String,
@@ -86,18 +92,40 @@ model! {
         Image { src: Option<String> },
         Santa { cap: String, pairs: Option<Vec<PersonIx>>, revealed: Vec<PersonIx> },
         Map { input: String },
-        Itinerary { date: String, stops: Vec<Stop> },
+        Itinerary {
+            /// ISO date (`YYYY-MM-DD`).
+            date: String,
+            stops: Vec<Stop>,
+        },
+        #[serde(rename_all = "camelCase")]
         Booking {
             kind: BookingKind,
             from: String,
             to: String,
-            when: String,
+            /// Departure / check-in / pickup: ISO date and `HH:MM`.
+            #[serde(default)]
+            start_date: String,
+            #[serde(default)]
+            start_time: String,
+            /// Return / check-out / drop-off.
+            #[serde(default)]
+            end_date: String,
+            #[serde(default)]
+            end_time: String,
             conf: String,
             cost: String,
             paid: bool,
             payer: PersonIx,
         },
         Places { items: Vec<Place> },
+        Email {
+            from: String,
+            to: String,
+            subject: String,
+            /// As sent, e.g. an RFC 2822 date or an ISO date.
+            date: String,
+            body: String,
+        },
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -160,6 +188,24 @@ model! {
     pub struct Stroke {
         pub id: String,
         pub pts: Vec<(i32, i32)>,
+        /// CSS colour; empty means the accent colour.
+        #[serde(default)]
+        pub color: String,
+    }
+
+    /// One row of the "my boards" list.
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct BoardSummary {
+        pub id: String,
+        pub title: String,
+        pub icon: String,
+        #[serde(default)]
+        pub date: String,
+        #[serde(default)]
+        pub end_date: String,
+        /// Unix time in milliseconds of the last save.
+        pub updated_at: f64,
     }
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -3,18 +3,13 @@ import { edgePath } from '~/lib/geometry'
 import { nodeBox, useBoard } from '~/store/board'
 import { useOverlay } from './interaction'
 
-const strokePath = (pts: ReadonlyArray<readonly [number, number]>) => `M${pts.map((p) => p.join(',')).join(' L')}`
-
-/** Connections and pen strokes, drawn in board space under the cards. */
+/** Connections between cards, drawn in board space under them. */
 export function EdgesLayer() {
   const nodes = useBoard((s) => s.board?.nodes)
   const edges = useBoard((s) => s.board?.edges)
-  const strokes = useBoard((s) => s.board?.strokes)
   const sizes = useBoard((s) => s.sizes)
   const sel = useBoard((s) => s.sel)
-  const tool = useBoard((s) => s.tool)
   const temp = useOverlay((s) => s.temp)
-  const drawing = useOverlay((s) => s.drawing)
 
   const byId = useMemo(() => new Map((nodes ?? []).map((n) => [n.id, n])), [nodes])
   const select = useBoard.getState().select
@@ -36,36 +31,6 @@ export function EdgesLayer() {
         </marker>
       </defs>
 
-      {strokes?.map((k) => {
-        const d = strokePath(k.pts)
-        const on = sel != null && 'stroke' in sel && sel.stroke === k.id
-        return (
-          <g key={k.id}>
-            <path
-              d={d}
-              stroke="transparent"
-              strokeWidth={14}
-              fill="none"
-              className="cursor-pointer"
-              style={{ pointerEvents: tool === 'select' ? 'stroke' : 'none' }}
-              onPointerDown={(e) => {
-                e.stopPropagation()
-                select({ stroke: k.id })
-              }}
-            />
-            <path
-              d={d}
-              stroke={on ? 'var(--color-accent)' : 'var(--color-accent-300)'}
-              strokeWidth={on ? 3.5 : 2.5}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={on ? { filter: 'drop-shadow(0 0 6px var(--color-accent))' } : undefined}
-            />
-          </g>
-        )
-      })}
-
       {edges?.map((e) => {
         const a = byId.get(e.from)
         const b = byId.get(e.to)
@@ -82,6 +47,7 @@ export function EdgesLayer() {
               className="cursor-pointer"
               style={{ pointerEvents: 'stroke' }}
               onPointerDown={(ev) => {
+                if (ev.button !== 0 || useBoard.getState().tool !== 'select') return
                 ev.stopPropagation()
                 select({ edge: e.id })
               }}
@@ -100,9 +66,6 @@ export function EdgesLayer() {
       })}
 
       {tempPath && <path d={tempPath} stroke="var(--color-accent)" strokeWidth={2} strokeDasharray="6 4" fill="none" markerEnd="url(#ip-arrow)" />}
-      {drawing && drawing.length > 1 && (
-        <path d={strokePath(drawing)} stroke="var(--color-accent-300)" strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      )}
     </svg>
   )
 }

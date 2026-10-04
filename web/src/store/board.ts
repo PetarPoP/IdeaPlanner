@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Board, Node } from '~/lib/model.gen'
+import type { Board, Edge, Node } from '~/lib/model.gen'
 import type { NodeType } from '~/lib/catalog'
 import { KIND_NOUN } from '~/lib/catalog'
 import type { Box, View } from '~/lib/geometry'
@@ -10,9 +10,23 @@ import type { TemplateKey } from '~/lib/templates'
 import { duplicateCard, fromTemplate, newCard } from '~/lib/templates'
 import type { SyncState } from '~/lib/storage'
 
-export type Tool = 'select' | 'hand' | 'pen' | 'connect'
+export type Tool = 'select' | 'hand' | 'pen' | 'erase' | 'connect'
 export type Panel = 'budget' | 'tasks' | 'people' | 'activity'
-export type Selection = { node: string } | { edge: string } | { stroke: string } | null
+export type Dialog = 'budget' | 'templates' | 'newBoard' | 'shortcuts'
+export type ViewMode = 'board' | 'list' | 'costs' | 'timeline'
+export type Selection = { nodes: string[] } | { edge: string } | { stroke: string } | null
+
+/** Ids of the selected cards (none when a connection or drawing is selected). */
+export const selectedNodes = (sel: Selection): string[] => (sel && 'nodes' in sel ? sel.nodes : [])
+
+/** What Ctrl+C puts on the clipboard. */
+export interface CardClip {
+  ideaplanner: 1
+  nodes: Node[]
+  edges: Edge[]
+}
+
+export const PEN_COLORS = ['', '#f3f5fe', '#f0b86e', '#7fd1b9', '#f08a8a'] as const
 
 /**
  * How a change enters undo history:
@@ -41,11 +55,14 @@ interface State {
   sizes: Record<string, { w: number; h: number }>
 
   tool: Tool
+  penColor: string
   sel: Selection
   connectFrom: string | null
   panel: Panel | null
-  dialog: 'budget' | 'templates' | null
+  dialog: Dialog | null
   addOpen: boolean
+  sidebar: boolean
+  mode: ViewMode
 }
 
 interface Actions {
@@ -59,9 +76,17 @@ interface Actions {
   redo(): void
   log(msg: string): void
 
-  addNode(type: NodeType, at?: { x: number; y: number }): string
+  addNode<T extends NodeType>(type: T, at?: { x: number; y: number }, patch?: Partial<Extract<Node, { type: T }>>): string
   deleteSelection(): void
   duplicateSelection(): void
+  selectAll(): void
+  /** Moves the selected cards by (dx, dy) board units. */
+  nudge(dx: number, dy: number): void
+  copySelection(): CardClip | null
+  /** Adds copied cards with fresh ids, their top-left corner at `at` (or offset from the originals). */
+  paste(clip: CardClip, at?: { x: number; y: number }): void
+  /** Deletes drawings within `r` of (x, y); returns whether any went. */
+  eraseAt(x: number, y: number, r: number): boolean
   addEdge(from: string, to: string): void
   /** Shows `input` on the map card linked to `fromId` (or the first map, or a new one). */
   pushToMap(fromId: string, input: string, what: string): void
@@ -69,6 +94,9 @@ interface Actions {
   applyTemplate(key: TemplateKey, name: string): void
 
   set(patch: Partial<State>): void
+  togglePanel(panel: Panel): void
+  toggleDialog(dialog: Dialog): void
+  setMode(mode: ViewMode): void
   setTool(tool: Tool): void
   select(sel: Selection): void
   setView(view: View): void
@@ -81,6 +109,56 @@ interface Actions {
 export type BoardStore = State & Actions
 
 export const isMobileWidth = (vw: number) => vw < MOBILE_MAX
+
+const MODE_KEY = 'ideaPlanner.view'
+const MODES: readonly ViewMode[] = ['board', 'list', 'costs', 'timeline']
+
+function readMode(): ViewMode {
+  try {
+    const m = localStorage.getItem(MODE_KEY) as ViewMode | null
+    return m && MODES.includes(m) ? m : 'board'
+  } catch {
+    return 'board'
+  }
+}
+
+/** Distance from (x, y) to the segment a–b. */
+function segDist(x: number, y: number, a: readonly [number, number], b: readonly [number, number]) {
+  const dx = b[0] - a[0]
+  const dy = b[1] - a[1]
+  const len = dx * dx + dy * dy
+  const t = len ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / len)) : 0
+  return Math.hypot(x - (a[0] + t * dx), y - (a[1] + t * dy))
+}
+
+export function strokeNear(pts: ReadonlyArray<readonly [number, number]>, x: number, y: number, r: number): boolean {
+  if (pts.length === 1) return Math.hypot(x - pts[0]![0], y - pts[0]![1]) <= r
+  for (let i = 1; i < pts.length; i++) if (segDist(x, y, pts[i - 1]!, pts[i]!) <= r) return true
+  return false
+}
+
+/** Drops references to people a pasted card's board doesn't have. */
+function fitPeople(n: Node, people: number): Node {
+  const ok = (i: number) => i < people
+  switch (n.type) {
+    case 'section':
+      return { ...n, items: n.items.map((i) => (ok(i.payer) ? i : { ...i, payer: 0, paid: false })) }
+    case 'booking':
+      return ok(n.payer) ? n : { ...n, payer: 0, paid: false }
+    case 'checklist':
+      return { ...n, items: n.items.map((t) => (t.who != null && !ok(t.who) ? { ...t, who: null } : t)) }
+    case 'note':
+      return { ...n, votes: n.votes.filter(ok) }
+    case 'poll':
+      return { ...n, options: n.options.map((o) => ({ ...o, votes: o.votes.filter(ok) })) }
+    case 'places':
+      return { ...n, items: n.items.map((p) => ({ ...p, hearts: p.hearts.filter(ok) })) }
+    case 'santa':
+      return n.pairs && n.pairs.length > people ? { ...n, pairs: null, revealed: [] } : n
+    default:
+      return n
+  }
+}
 
 /** A card's box on the board, using its measured height once known. */
 export function nodeBox(n: Node, sizes: State['sizes']): Box {
@@ -117,13 +195,17 @@ export const useBoard = create<BoardStore>()((set, get) => {
     vw: typeof window === 'undefined' ? 1280 : window.innerWidth,
     sizes: {},
     tool: 'select',
+    penColor: '',
     sel: null,
     connectFrom: null,
     panel: null,
     dialog: null,
     addOpen: false,
+    sidebar: false,
+    mode: readMode(),
 
-    hydrate: (board, sync) => set({ board, sync, past: [], future: [], editBase: null, sel: null, sizes: {} }),
+    hydrate: (board, sync) =>
+      set({ board, sync, past: [], future: [], editBase: null, sel: null, sizes: {}, connectFrom: null, dialog: null, addOpen: false }),
     setSync: (sync) => set({ sync }),
 
     change: (fn, mode = 'step') => {
@@ -155,13 +237,13 @@ export const useBoard = create<BoardStore>()((set, get) => {
         'silent',
       ),
 
-    addNode: (type, at) => {
+    addNode: (type, at, patch) => {
       const card = newCard(type)
       const c = at ?? screenCenter()
       const jitter = at ? 0 : (Math.random() - 0.5) * 60
-      const node = { ...card, x: Math.round(c.x - card.w / 2 + jitter), y: Math.round(c.y - 80 + jitter) } as Node
+      const node = { ...card, ...patch, x: Math.round(c.x - card.w / 2 + jitter), y: Math.round(c.y - 80 + jitter) } as Node
       get().change((b) => ({ ...b, nodes: [...b.nodes, node] }))
-      set({ sel: { node: node.id }, tool: 'select', addOpen: false })
+      set({ sel: { nodes: [node.id] }, tool: 'select', addOpen: false })
       get().log(`added a ${KIND_NOUN[type] ?? type}`)
       return node.id
     },
@@ -169,27 +251,79 @@ export const useBoard = create<BoardStore>()((set, get) => {
     deleteSelection: () => {
       const sel = get().sel
       if (!sel) return
-      const nodeId = 'node' in sel ? sel.node : null
+      const nodeIds = new Set(selectedNodes(sel))
       const edgeId = 'edge' in sel ? sel.edge : null
       const strokeId = 'stroke' in sel ? sel.stroke : null
       get().change((b) => ({
         ...b,
-        nodes: nodeId ? b.nodes.filter((n) => n.id !== nodeId) : b.nodes,
-        edges: b.edges.filter((e) => e.id !== edgeId && e.from !== nodeId && e.to !== nodeId),
+        nodes: nodeIds.size ? b.nodes.filter((n) => !nodeIds.has(n.id)) : b.nodes,
+        edges: b.edges.filter((e) => e.id !== edgeId && !nodeIds.has(e.from) && !nodeIds.has(e.to)),
         strokes: b.strokes.filter((k) => k.id !== strokeId),
       }))
       set({ sel: null })
-      get().log(`deleted a ${nodeId ? 'card' : edgeId ? 'connection' : 'drawing'}`)
+      get().log(
+        nodeIds.size > 1 ? `deleted ${nodeIds.size} cards` : `deleted a ${nodeIds.size ? 'card' : edgeId ? 'connection' : 'drawing'}`,
+      )
     },
 
     duplicateSelection: () => {
+      const clip = get().copySelection()
+      if (clip) get().paste(clip)
+    },
+
+    selectAll: () => {
+      const b = get().board
+      if (b) set({ sel: { nodes: b.nodes.map((n) => n.id) }, tool: 'select' })
+    },
+
+    nudge: (dx, dy) => {
+      const ids = new Set(selectedNodes(get().sel))
+      if (!ids.size) return
+      get().change((b) => ({ ...b, nodes: b.nodes.map((n) => (ids.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n)) }))
+    },
+
+    copySelection: () => {
       const { sel, board } = get()
-      if (!sel || !('node' in sel) || !board) return
-      const orig = board.nodes.find((n) => n.id === sel.node)
-      if (!orig) return
-      const copy = duplicateCard(orig)
-      get().change((b) => ({ ...b, nodes: [...b.nodes, copy] }))
-      set({ sel: { node: copy.id } })
+      const ids = new Set(selectedNodes(sel))
+      if (!board || !ids.size) return null
+      return {
+        ideaplanner: 1,
+        nodes: board.nodes.filter((n) => ids.has(n.id)),
+        edges: board.edges.filter((e) => ids.has(e.from) && ids.has(e.to)),
+      }
+    },
+
+    paste: (clip, at) => {
+      const b = get().board
+      if (!b || !clip.nodes.length) return
+      const x0 = Math.min(...clip.nodes.map((n) => n.x))
+      const y0 = Math.min(...clip.nodes.map((n) => n.y))
+      const dx = at ? Math.round(at.x - x0) : 40
+      const dy = at ? Math.round(at.y - y0) : 40
+      const ids = new Map<string, string>()
+      const nodes = clip.nodes.map((n) => {
+        const c = fitPeople(duplicateCard(n, dx, dy), b.people.length)
+        ids.set(n.id, c.id)
+        return c
+      })
+      const edges = clip.edges.flatMap((e) => {
+        const from = ids.get(e.from)
+        const to = ids.get(e.to)
+        return from && to ? [{ id: uid(), from, to }] : []
+      })
+      get().change((x) => ({ ...x, nodes: [...x.nodes, ...nodes], edges: [...x.edges, ...edges] }))
+      set({ sel: { nodes: nodes.map((n) => n.id) }, tool: 'select' })
+      get().log(nodes.length > 1 ? `pasted ${nodes.length} cards` : 'pasted a card')
+    },
+
+    eraseAt: (x, y, r) => {
+      const b = get().board
+      if (!b) return false
+      const hit = b.strokes.filter((k) => strokeNear(k.pts, x, y, r))
+      if (!hit.length) return false
+      const gone = new Set(hit.map((k) => k.id))
+      get().change((x2) => ({ ...x2, strokes: x2.strokes.filter((k) => !gone.has(k.id)) }), 'silent')
+      return true
     },
 
     addEdge: (from, to) => {
@@ -226,14 +360,24 @@ export const useBoard = create<BoardStore>()((set, get) => {
       const b = get().board
       if (!b) return
       get().change(() => fromTemplate(key, b))
-      set({ dialog: null, sel: null, sizes: {} })
+      set({ dialog: null, sel: null, sizes: {}, mode: 'board' })
       get().log(`started from the ${name} template`)
       // Cards are measured on the next frames; fit once they are.
       setTimeout(() => get().fit(), 80)
     },
 
     set: (patch) => set(patch),
-    setTool: (tool) => set({ tool, connectFrom: null, addOpen: false }),
+    togglePanel: (panel) => set({ panel: get().panel === panel ? null : panel, addOpen: false }),
+    toggleDialog: (dialog) => set({ dialog: get().dialog === dialog ? null : dialog, addOpen: false }),
+    setMode: (mode) => {
+      set({ mode, addOpen: false, connectFrom: null, tool: get().tool === 'connect' ? 'select' : get().tool })
+      try {
+        localStorage.setItem(MODE_KEY, mode)
+      } catch {
+        // Not remembered; nothing else depends on it.
+      }
+    },
+    setTool: (tool) => set({ tool, connectFrom: null, addOpen: false, mode: 'board' }),
     select: (sel) => set({ sel }),
     setView: (view) => set({ view }),
 
@@ -250,7 +394,7 @@ export const useBoard = create<BoardStore>()((set, get) => {
         board.nodes.map((n) => nodeBox(n, sizes)),
         viewport.w,
         viewport.h,
-        mob ? { side: 16, top: 70, bottom: 90 } : { side: 40, top: 80, bottom: 100 },
+        mob ? { side: 16, top: 120, bottom: 90 } : { side: 40, top: 80, bottom: 100 },
       )
       if (v) set({ view: v })
     },
@@ -264,7 +408,8 @@ export const useBoard = create<BoardStore>()((set, get) => {
       const z = Math.max(view.z, 0.9)
       const cw = mob ? viewport.w : viewport.w - 380
       set({
-        sel: { node: id },
+        mode: 'board',
+        sel: { nodes: [id] },
         view: { z, x: cw / 2 - (b.x + b.w / 2) * z, y: (mob ? viewport.h * 0.3 : viewport.h / 2) - (b.y + b.h / 2) * z },
         panel: mob ? null : panel,
       })

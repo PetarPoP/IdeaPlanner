@@ -15,6 +15,7 @@ export const KIND_LABEL: Record<NodeType, string> = {
   itinerary: 'Day',
   booking: 'Booking',
   places: 'Places',
+  email: 'Email',
 }
 
 /** Wording for the activity log ("added a day plan"). */
@@ -22,7 +23,25 @@ export const KIND_NOUN: Partial<Record<NodeType, string>> = {
   section: 'cost card',
   itinerary: 'day plan',
   santa: 'name draw',
+  checklist: 'checklist',
+  email: 'email',
 }
+
+/** Every card people can add, in menu order. */
+export const CARD_MENU: ReadonlyArray<{ type: NodeType; icon: string; label: string; desc: string }> = [
+  { type: 'note', icon: 'lightbulb', label: 'Idea', desc: 'A note the group can vote on' },
+  { type: 'section', icon: 'coins', label: 'Cost card', desc: 'Items with auto-sum' },
+  { type: 'itinerary', icon: 'calendar-dots', label: 'Day plan', desc: 'Stops with times and costs' },
+  { type: 'booking', icon: 'airplane-tilt', label: 'Booking', desc: 'Flight, stay, car, ticket' },
+  { type: 'map', icon: 'map-trifold', label: 'Map', desc: 'A place or a route' },
+  { type: 'places', icon: 'push-pin', label: 'Places to visit', desc: 'Saved spots with hearts' },
+  { type: 'checklist', icon: 'check-square', label: 'Checklist', desc: 'Tasks with assignees' },
+  { type: 'poll', icon: 'chart-bar', label: 'Poll', desc: 'Let the group vote' },
+  { type: 'link', icon: 'link', label: 'Link', desc: 'Bookmark a page' },
+  { type: 'image', icon: 'image', label: 'Photo', desc: 'Drop or paste an image' },
+  { type: 'email', icon: 'envelope-simple', label: 'Email', desc: 'Paste or forward an email' },
+  { type: 'santa', icon: 'shuffle', label: 'Name draw', desc: 'Secret Santa pairs' },
+]
 
 export const PLACE_CATEGORIES: ReadonlyArray<{ label: string; icon: string }> = [
   { label: 'Beach', icon: 'umbrella-simple' },
@@ -33,11 +52,12 @@ export const PLACE_CATEGORIES: ReadonlyArray<{ label: string; icon: string }> = 
   { label: 'Shop', icon: 'bag' },
 ]
 
-export const BOOKING_KINDS: Record<BookingKind, { icon: string; from: string; to: string }> = {
-  Flight: { icon: 'airplane-tilt', from: 'From', to: 'To' },
-  Stay: { icon: 'bed', from: 'Place', to: 'Nights' },
-  Car: { icon: 'car-profile', from: 'Pickup', to: 'Return' },
-  Ticket: { icon: 'ticket', from: 'Event', to: 'Seat' },
+/** Wording per booking kind: the two places and the two moments. */
+export const BOOKING_KINDS: Record<BookingKind, { icon: string; from: string; to: string; start: string; end: string }> = {
+  Flight: { icon: 'airplane-tilt', from: 'From', to: 'To', start: 'Depart', end: 'Return' },
+  Stay: { icon: 'bed', from: 'Place', to: 'Room', start: 'Check-in', end: 'Check-out' },
+  Car: { icon: 'car-profile', from: 'Pickup at', to: 'Drop-off at', start: 'Pickup', end: 'Drop-off' },
+  Ticket: { icon: 'ticket', from: 'Event', to: 'Seat', start: 'Starts', end: 'Ends' },
 }
 
 export const CURRENCIES = ['€', '$', '£', 'kn'] as const

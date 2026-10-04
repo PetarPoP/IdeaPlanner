@@ -8,9 +8,17 @@ t: number, };
 
 export type Board = { id: string, title: string, icon: string, 
 /**
- * ISO date (`YYYY-MM-DD`) of the event, or empty.
+ * ISO date (`YYYY-MM-DD`) the plan starts, or empty.
  */
 date: string, 
+/**
+ * ISO date the plan ends, or empty for a one-day plan.
+ */
+endDate: string, 
+/**
+ * Where it happens, free text ("Lisbon → Algarve").
+ */
+place: string, 
 /**
  * Total budget.
  */
@@ -20,15 +28,56 @@ cap: string, cur: string,
  */
 splitN: number, people: Array<Person>, nodes: Array<Node>, edges: Array<Edge>, strokes: Array<Stroke>, activity: Array<Activity>, };
 
+/**
+ * One row of the "my boards" list.
+ */
+export type BoardSummary = { id: string, title: string, icon: string, date: string, endDate: string, 
+/**
+ * Unix time in milliseconds of the last save.
+ */
+updatedAt: number, };
+
 export type BookingKind = "Flight" | "Stay" | "Car" | "Ticket";
 
 export type CostItem = { id: string, text: string, cost: string, paid: boolean, payer: number, };
 
 export type Edge = { id: string, from: string, to: string, };
 
-export type Node = { id: string, x: number, y: number, w: number, title: string, icon: string, accent: boolean, } & ({ "type": "section", items: Array<CostItem>, budget: string, } | { "type": "note", text: string, votes: Array<number>, author: string, } | { "type": "checklist", items: Array<Task>, } | { "type": "poll", options: Array<PollOption>, } | { "type": "link", url: string, } | { "type": "image", src: string | null, } | { "type": "santa", cap: string, pairs: Array<number> | null, revealed: Array<number>, } | { "type": "map", input: string, } | { "type": "itinerary", date: string, stops: Array<Stop>, } | { "type": "booking", kind: BookingKind, from: string, to: string, when: string, conf: string, cost: string, paid: boolean, payer: number, } | { "type": "places", items: Array<Place>, });
+export type Node = { id: string, x: number, y: number, w: number, title: string, icon: string, accent: boolean, } & ({ "type": "section", items: Array<CostItem>, budget: string, } | { "type": "note", text: string, votes: Array<number>, author: string, } | { "type": "checklist", items: Array<Task>, } | { "type": "poll", options: Array<PollOption>, } | { "type": "link", url: string, } | { "type": "image", src: string | null, } | { "type": "santa", cap: string, pairs: Array<number> | null, revealed: Array<number>, } | { "type": "map", input: string, } | { "type": "itinerary", 
+/**
+ * ISO date (`YYYY-MM-DD`).
+ */
+date: string, stops: Array<Stop>, } | { "type": "booking", kind: BookingKind, from: string, to: string, 
+/**
+ * Departure / check-in / pickup: ISO date and `HH:MM`.
+ */
+startDate: string, startTime: string, 
+/**
+ * Return / check-out / drop-off.
+ */
+endDate: string, endTime: string, conf: string, cost: string, paid: boolean, payer: number, } | { "type": "places", items: Array<Place>, } | { "type": "email", from: string, to: string, subject: string, 
+/**
+ * As sent, e.g. an RFC 2822 date or an ISO date.
+ */
+date: string, body: string, });
 
-export type NodeBody = { "type": "section", items: Array<CostItem>, budget: string, } | { "type": "note", text: string, votes: Array<number>, author: string, } | { "type": "checklist", items: Array<Task>, } | { "type": "poll", options: Array<PollOption>, } | { "type": "link", url: string, } | { "type": "image", src: string | null, } | { "type": "santa", cap: string, pairs: Array<number> | null, revealed: Array<number>, } | { "type": "map", input: string, } | { "type": "itinerary", date: string, stops: Array<Stop>, } | { "type": "booking", kind: BookingKind, from: string, to: string, when: string, conf: string, cost: string, paid: boolean, payer: number, } | { "type": "places", items: Array<Place>, };
+export type NodeBody = { "type": "section", items: Array<CostItem>, budget: string, } | { "type": "note", text: string, votes: Array<number>, author: string, } | { "type": "checklist", items: Array<Task>, } | { "type": "poll", options: Array<PollOption>, } | { "type": "link", url: string, } | { "type": "image", src: string | null, } | { "type": "santa", cap: string, pairs: Array<number> | null, revealed: Array<number>, } | { "type": "map", input: string, } | { "type": "itinerary", 
+/**
+ * ISO date (`YYYY-MM-DD`).
+ */
+date: string, stops: Array<Stop>, } | { "type": "booking", kind: BookingKind, from: string, to: string, 
+/**
+ * Departure / check-in / pickup: ISO date and `HH:MM`.
+ */
+startDate: string, startTime: string, 
+/**
+ * Return / check-out / drop-off.
+ */
+endDate: string, endTime: string, conf: string, cost: string, paid: boolean, payer: number, } | { "type": "places", items: Array<Place>, } | { "type": "email", from: string, to: string, subject: string, 
+/**
+ * As sent, e.g. an RFC 2822 date or an ISO date.
+ */
+date: string, body: string, };
 
 export type Person = { 
 /**
@@ -48,6 +97,10 @@ export type Role = "View" | "Edit" | "Admin";
 
 export type Stop = { id: string, time: string, place: string, cost: string, };
 
-export type Stroke = { id: string, pts: Array<[number, number]>, };
+export type Stroke = { id: string, pts: Array<[number, number]>, 
+/**
+ * CSS colour; empty means the accent colour.
+ */
+color: string, };
 
 export type Task = { id: string, text: string, done: boolean, who: number | null, };

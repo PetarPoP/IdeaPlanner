@@ -75,8 +75,29 @@ DATABASE_URL=… WEB_DIST=web/dist/client ./target/release/ideaplanner-server
 `web/dist/client` also works on any static host on its own; boards then
 stay in each browser.
 
+## Email into a board
+
+Each board can receive email at `board-<id>@<INBOX_DOMAIN>`. Point your mail
+provider's inbound routing (Cloudflare Email Routing, Mailgun routes,
+Postmark inbound…) at `POST /api/inbox` with the raw message as the body and
+`Authorization: Bearer <INBOX_TOKEN>`. The server parses it (Rust,
+`mail-parser`) and adds an email card. With both variables set, the address
+shows on email cards and in the Share panel. Without a server, paste an
+email or drop an `.eml` file onto an email card instead.
+
+## Views
+
+The bar at the top switches the same board between **Board** (the canvas),
+**Cards** (every card in columns, with search and kind filters), **Costs**
+(every cost line, paid status, split and settle-up) and **Timeline** (day
+plans and bookings by date). Keys `1`–`4` do the same.
+
 ## Keyboard
 
-`V` select · `H` pan · `P` draw · `C` connect · `N` new idea · `F` fit ·
-`⌘/Ctrl Z` undo · `⇧⌘Z` redo · `⌘/Ctrl D` duplicate · `Delete` remove ·
-double-click the board for a quick idea.
+`S` select · `P` (or `H`) pan · `D` draw · `E` erase · `C` connect ·
+hold `Space` or the middle mouse button to pan with any tool · drag on the
+board to select several cards, `Shift`-click to add · `⌘/Ctrl A` select all ·
+`⌘/Ctrl C`, `X`, `V` copy, cut, paste (pasting a link, an email or an image
+makes a card) · `⌘/Ctrl D` duplicate · arrows nudge · `Delete` remove ·
+`N` new idea · `F` fit · `1`–`4` views · `⌘/Ctrl K` find a board ·
+`⌘/Ctrl Z` undo · `⇧⌘Z` redo · `?` all shortcuts.
