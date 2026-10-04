@@ -1,25 +1,22 @@
 [package]
 name = "ideaplanner"
-version = "0.1.0"
-description = "Idea Planner Tauri backend"
-edition = "2021"
+description = "Idea Planner desktop and mobile app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [lib]
-name = "app_lib"
+name = "ideaplanner_app"
 crate-type = ["staticlib", "cdylib", "rlib"]
-
-[dependencies]
-tauri = { version = "2", features = [] }
-rusqlite = { version = "0.31", features = ["bundled"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-uuid = { version = "1.8", features = ["v4"] }
-chrono = { version = "0.4", features = ["serde"] }
-thiserror = "1.0"
-reqwest = { version = "0.12", features = ["json", "blocking", "rustls-tls"] }
-keyring = "2"
-dotenvy = "0.15"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[dependencies]
+ideaplanner-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+rusqlite = { version = "0.32", features = ["bundled"] }
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"

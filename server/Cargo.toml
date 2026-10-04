@@ -1,31 +1,23 @@
 [package]
 name = "ideaplanner-server"
-version = "0.1.0"
-edition = "2021"
-description = "Axum + NeonDB backend for IdeaPlanner"
+description = "Serves the Idea Planner web app and stores shared boards in Postgres"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [dependencies]
-axum = { version = "0.7", features = ["macros"] }
-tokio = { version = "1.41", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-uuid = { version = "1.8", features = ["serde", "v4"] }
-chrono = { version = "0.4", features = ["serde"] }
-sqlx = { version = "0.7", default-features = false, features = [
-  "runtime-tokio",
-  "postgres",
-  "chrono",
-  "uuid",
-  "migrate",
-  "macros",
-  "tls-rustls",
-  "bigdecimal",
-] }
-tower = "0.5"
-tower-http = { version = "0.5", features = ["cors", "trace"] }
+ideaplanner-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow = "1"
+axum = "0.8"
+dotenvy = "0.15"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "migrate", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+tower-http = { version = "0.6", features = ["cors", "fs", "trace", "compression-gzip", "limit"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-dotenvy = "0.15"
-thiserror = "1.0"
-anyhow = "1.0"
 
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

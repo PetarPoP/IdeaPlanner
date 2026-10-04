@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "server", "src-tauri"]
+
+[workspace.package]
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+ideaplanner-core = { path = "crates/core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["serde", "v4"] }
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
+thiserror = "2"

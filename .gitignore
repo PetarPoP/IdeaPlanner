@@ -1,13 +1,23 @@
-# Local env (secrets)
+# Secrets
 .env
 .env.local
 .env.*.local
 
-# Rust / Cargo
+# Rust
 target/
 
-# IDE
+# Node / web
+node_modules/
+web/dist/
+web/.tanstack/
+web/.output/
+
+# Tauri (regenerated on build; `tauri android|ios init` creates gen/android, gen/apple)
+src-tauri/gen/schemas/
+
+# Editors
 .idea/
 .vscode/
 *.swp
 *.swo
+.DS_Store

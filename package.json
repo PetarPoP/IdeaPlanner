@@ -1,16 +1,20 @@
 {
-  "name": "idea-planner-root",
+  "name": "ideaplanner",
   "private": true,
+  "workspaces": ["web"],
   "scripts": {
-    "dev:web": "npm run dev --prefix ./web",
-    "build:web": "npm run build --prefix ./web",
-    "lint:web": "npm run lint --prefix ./web",
-    "tauri:dev": "npx tauri dev",
-    "tauri:android": "npx tauri android dev",
-    "tauri:ios": "npx tauri ios dev"
+    "dev": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "test": "npm test -w web",
+    "typecheck": "npm run typecheck -w web",
+    "server": "cargo run -p ideaplanner-server",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
+    "android": "tauri android dev",
+    "ios": "tauri ios dev",
+    "gen:types": "cargo test -p ideaplanner-core --features ts"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0"
+    "@tauri-apps/cli": "^2.12.1"
   }
 }
-

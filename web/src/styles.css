@@ -1,0 +1,282 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+/*
+ * Nocturne design tokens (from the design system's styles.css), exposed to
+ * Tailwind so components use `bg-surface`, `text-accent-300`, `shadow-card`…
+ * instead of raw values.
+ */
+@theme {
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-mono: ui-monospace, Menlo, monospace;
+
+  --breakpoint-md: 760px;
+  --breakpoint-xl: 1180px;
+
+  --color-bg: #161826;
+  --color-surface: #232532;
+  --color-text: #e9e9ed;
+  --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
+  --color-note-from: #2e2a48;
+  --color-note-to: #25243a;
+
+  --color-accent: #9184d9;
+  --color-accent-100: #f5f4ff;
+  --color-accent-200: #e7e5fe;
+  --color-accent-300: #d2cefd;
+  --color-accent-400: #b5abfc;
+  --color-accent-500: #968ae0;
+  --color-accent-600: #796cbf;
+  --color-accent-700: #5d5294;
+  --color-accent-800: #423a6a;
+  --color-accent-900: #2b2741;
+
+  --color-neutral-100: #f3f5fe;
+  --color-neutral-200: #e4e7f5;
+  --color-neutral-300: #cfd3e5;
+  --color-neutral-400: #b2b6ca;
+  --color-neutral-500: #9397ab;
+  --color-neutral-600: #75798c;
+  --color-neutral-700: #595d6c;
+  --color-neutral-800: #3f424d;
+  --color-neutral-900: #292b31;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 0 0 1px #3f424d;
+  --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, 0.65);
+  --shadow-card: 0 0 0 1px #3f424d, 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-card-active: 0 0 0 1.5px var(--color-accent),
+    0 0 28px color-mix(in srgb, var(--color-accent) 30%, transparent), 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 0 14px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  --shadow-inset: inset 0 0 0 1px #3f424d;
+
+  --animate-flow: flow 0.6s linear infinite;
+  @keyframes flow {
+    to {
+      stroke-dashoffset: -20;
+    }
+  }
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  input,
+  textarea,
+  button,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  ::placeholder {
+    color: var(--color-neutral-600);
+  }
+  select option {
+    background: var(--color-surface);
+  }
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+  a {
+    color: var(--color-accent);
+  }
+  a:hover {
+    color: var(--color-accent-300);
+  }
+}
+
+/* Nocturne component classes, kept as in the design system. */
+@layer components {
+  .glass {
+    background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-md);
+  }
+  .glass-sm {
+    background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1.2;
+    color: var(--color-text);
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 5.6px 10px;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+  .btn-primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    color: var(--color-accent);
+  }
+  .btn-primary:active {
+    background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+  .btn-secondary {
+    border-color: var(--color-divider);
+  }
+  .btn-secondary:hover {
+    background: color-mix(in srgb, var(--color-text) 7%, transparent);
+    color: var(--color-text);
+  }
+  .btn-secondary:active {
+    background: color-mix(in srgb, var(--color-text) 14%, transparent);
+  }
+  .btn-ghost {
+    color: var(--color-accent);
+    padding-inline: 2.8px;
+  }
+  .btn-ghost:hover {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+  .btn-ghost:active {
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+  }
+
+  .input {
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 14px;
+    color: var(--color-text);
+    caret-color: var(--color-accent);
+    background: var(--color-surface);
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-md);
+  }
+  .input:hover {
+    border-color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  }
+  .input:focus-visible {
+    border-color: var(--color-accent);
+    outline-offset: 0;
+  }
+
+  .seg {
+    display: inline-flex;
+    overflow: hidden;
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-md);
+  }
+  .seg > * + * {
+    border-left: 1px solid var(--color-divider);
+  }
+  .seg-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    font-size: 12px;
+    color: var(--color-neutral-400);
+  }
+  .seg-opt:hover {
+    background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  }
+  .seg-opt[aria-pressed='true'] {
+    color: var(--color-accent);
+    box-shadow: inset 0 0 0 1px var(--color-accent);
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    padding: 3px 10px;
+    border-radius: 6px;
+  }
+  .tag-accent {
+    background: var(--color-accent-800);
+    color: var(--color-accent-100);
+  }
+  .tag-neutral {
+    background: var(--color-neutral-800);
+    color: var(--color-neutral-100);
+  }
+
+  /* Borderless text field used inside cards. */
+  .field {
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    padding: 0;
+  }
+
+  .kicker {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-neutral-500);
+  }
+
+  /* A row rule that fades out at both ends (Nocturne signature). */
+  .rule-fade {
+    background: linear-gradient(
+        to right,
+        transparent,
+        color-mix(in srgb, var(--color-text) 8%, transparent) 48px,
+        color-mix(in srgb, var(--color-text) 8%, transparent) calc(100% - 48px),
+        transparent
+      )
+      no-repeat bottom / 100% 1px;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
