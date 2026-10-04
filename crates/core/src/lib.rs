@@ -5,6 +5,7 @@
 
 mod model;
 pub mod patch;
+pub mod reminders;
 
 use std::collections::HashSet;
 

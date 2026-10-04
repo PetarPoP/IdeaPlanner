@@ -8,17 +8,28 @@
 //! - `INBOX_TOKEN`, `INBOX_DOMAIN`  turn on email-in: mail sent to
 //!   `board-<id>@INBOX_DOMAIN` and forwarded as raw MIME to `POST /api/inbox`
 //!   with `Authorization: Bearer INBOX_TOKEN` becomes an email card.
+//! - `PUBLIC_URL`    where people open the app (sign-in links, invites).
+//! - `RESEND_API_KEY`, `MAIL_FROM`  send real email (sign-in, invites,
+//!   reminders); without them emails are written to the log.
+//! - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`  "Continue with Google".
+//! - `ANTHROPIC_API_KEY` (`ANTHROPIC_MODEL`)  read receipts and bookings.
+//! - `DIGEST_HOUR_UTC`  hour the daily reminder email goes out, default 7.
 //! - `CORS_ORIGINS`  comma-separated origins allowed to call the API
 //!   (needed when a desktop/mobile build syncs through `VITE_API_URL`).
 
+mod ai;
 mod api;
+mod auth;
+mod digest;
 mod inbox;
+mod live;
+mod mailer;
 mod store;
 
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use anyhow::Context;
-use axum::http::{HeaderValue, Method};
+use axum::http::{header, HeaderValue, Method};
 use sqlx::postgres::PgPoolOptions;
 use tower_http::{
     compression::CompressionLayer,
@@ -66,20 +77,29 @@ async fn main() -> anyhow::Result<()> {
     // Every unknown path is a client route (e.g. /b/<id>), so it gets the app shell.
     let app_shell = ServeDir::new(&dist).fallback(ServeFile::new(dist.join("index.html")));
 
-    let state = api::AppState {
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(3001);
+    let http = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()?;
+    let state = Arc::new(api::AppState {
         store,
         inbox: inbox::InboxConfig::from_env(),
-    };
-    let app = api::router(Arc::new(state))
+        auth: auth::AuthConfig::from_env(port),
+        mailer: mailer::Mailer::from_env(http.clone()),
+        ai: ai::AiConfig::from_env(),
+        http,
+        rooms: live::Rooms::default(),
+    });
+    digest::spawn(state.clone());
+    let app = api::router(state)
         .fallback_service(app_shell)
         .layer(cors())
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http());
 
-    let port: u16 = std::env::var("PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(3001);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("Idea Planner on http://{addr}");
@@ -98,8 +118,15 @@ fn cors() -> CorsLayer {
         .collect();
     CorsLayer::new()
         .allow_origin(origins)
-        .allow_methods([Method::GET, Method::PUT])
-        .allow_headers([axum::http::header::CONTENT_TYPE])
+        .allow_methods([
+            Method::GET,
+            Method::PUT,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+        ])
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+        .expose_headers([header::HeaderName::from_static("x-board-role")])
 }
 
 async fn shutdown() {
