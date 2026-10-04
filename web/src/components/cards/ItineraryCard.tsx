@@ -1,5 +1,5 @@
 import type { ChangeMode } from '~/store/board'
-import { ArrowSquareOut, CalendarBlank, CarSimple, MapPinLine } from '@phosphor-icons/react'
+import { ArrowSquareOut, CalendarBlank, CarSimple, MapPinLine, PersonSimpleWalk } from '@phosphor-icons/react'
 import type { Stop } from '~/lib/model.gen'
 import { nodeTotal } from '~/lib/budget'
 import { dirLink } from '~/lib/maps'
@@ -7,12 +7,16 @@ import { money } from '~/lib/money'
 import { newItem } from '~/lib/templates'
 import { addRow, patchNode, patchRow, removeRow, useBoard, useNode } from '~/store/board'
 import { dayLabel } from '~/lib/dates'
+import { travelLabel } from '~/lib/travel'
+import { useTravel } from '~/hooks/useGeo'
 import { AddRowButton, CostField, DateField, Field, RemoveButton } from '../ui'
+import { WeatherChip } from '../WeatherChip'
 import { useBoardMeta } from './hooks'
 
 export function ItineraryCard({ id }: { id: string }) {
   const n = useNode(id, 'itinerary')
   const { cur } = useBoardMeta()
+  const area = useBoard((s) => s.board?.place ?? '')
   if (!n) return null
 
   const total = nodeTotal(n)
@@ -30,23 +34,14 @@ export function ItineraryCard({ id }: { id: string }) {
           className="text-xs text-accent-300"
         />
         <span className="flex-1 truncate text-[11px] text-neutral-500">{dayLabel(n.date).split(',')[0]}</span>
+        <WeatherChip place={named[0] ?? area} date={n.date} near={area} />
         <span className="text-xs text-neutral-400">{total ? money(cur, total) : ''}</span>
       </div>
       {n.stops.map((s, i) => {
         const prev = n.stops[i - 1]
         return (
           <div key={s.id} className="flex flex-col">
-            {prev && (
-              <a
-                href={dirLink([prev.place, s.place])}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-[9px] flex items-center gap-1.5 border-l-[1.5px] border-dashed border-neutral-700 py-[3px] pl-4 text-[11px] text-neutral-500 no-underline hover:text-accent-300"
-              >
-                <CarSimple />
-                Directions
-              </a>
-            )}
+            {prev && <TravelRow from={prev.place} to={s.place} near={area} />}
             <div className="flex min-h-[34px] items-center gap-1.5">
               <span className="grid size-5 flex-none place-items-center rounded-full border-[1.5px] border-accent text-[10px] text-accent-300">{i + 1}</span>
               <Field value={s.time} onValue={(time, m) => row(s, { time }, m)} placeholder="--:--" className="w-10 font-mono text-xs text-neutral-400" />
@@ -81,5 +76,25 @@ export function ItineraryCard({ id }: { id: string }) {
         </a>
       </div>
     </div>
+  )
+}
+
+/** The dashed line between two stops: travel time when known, and a directions link. */
+function TravelRow({ from, to, near }: { from: string; to: string; near: string }) {
+  const { data } = useTravel(from, to, near)
+  const label = data ? travelLabel(data, false) : ''
+  const Icon = data?.walkMin != null ? PersonSimpleWalk : CarSimple
+  return (
+    <a
+      href={dirLink([from, to])}
+      target="_blank"
+      rel="noreferrer"
+      title={data && label ? travelLabel(data) : undefined}
+      className="ml-[9px] flex items-center gap-1.5 border-l-[1.5px] border-dashed border-neutral-700 py-[3px] pl-4 text-[11px] text-neutral-500 no-underline hover:text-accent-300"
+    >
+      <Icon />
+      {label && <span className="anim-fade text-neutral-400">{label} ·</span>}
+      Directions
+    </a>
   )
 }

@@ -6,6 +6,7 @@ import { NamedIcon } from '~/lib/icons'
 import { money, num } from '~/lib/money'
 import { patchNode, useBoard } from '~/store/board'
 import { DateField, cx } from '../ui'
+import { WeatherChip } from '../WeatherChip'
 import { PageView } from './PageView'
 
 type Itinerary = Extract<Node, { type: 'itinerary' }>
@@ -84,6 +85,7 @@ export function TimelineView() {
           const items = (byDate.get(date) ?? []).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'))
           const dayNo = isIsoDate(board.date) ? (daysBetween(board.date, date) ?? 0) + 1 : null
           const inTrip = dayNo != null && dayNo >= 1 && (span == null || span < 0 || dayNo <= span + 1)
+          const stop = items.flatMap((it) => (it.node.type === 'itinerary' ? it.node.stops : [])).find((s) => s.place.trim())
           return (
             <li key={date} className="anim-card grid grid-cols-[76px_1fr] gap-3 md:grid-cols-[120px_1fr] md:gap-5" style={{ animationDelay: `${Math.min(i, 12) * 25}ms` }}>
               <div className="relative flex flex-col items-end pt-3 text-right">
@@ -91,6 +93,7 @@ export function TimelineView() {
                 <span className="text-[11px] text-neutral-500">
                   {date === today ? 'Today' : inTrip ? `Day ${dayNo}` : date.slice(0, 4)}
                 </span>
+                <WeatherChip place={stop?.place ?? board.place} date={date} near={board.place} className="mt-0.5" />
               </div>
               <div className="relative border-l border-neutral-800 pb-4 pl-4 md:pl-5">
                 <span
