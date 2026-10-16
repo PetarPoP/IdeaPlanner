@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { clampZoom, simplify, snap, zoomAt } from '~/lib/geometry'
+import { clampZoom, containsBox, simplify, snap, zoomAt } from '~/lib/geometry'
 import { uid } from '~/lib/ids'
-import { nodeBox, selectedNodes, useBoard } from '~/store/board'
+import { frameContents, nodeBox, selectedNodes, useBoard } from '~/store/board'
 import { EdgesLayer } from './EdgesLayer'
 import { NodeCard } from './NodeCard'
 import { StrokesLayer } from './StrokesLayer'
@@ -18,6 +18,8 @@ const CURSOR = { select: 'default', hand: 'grab', pen: 'crosshair', erase: ERASE
 const ERASER_PX = 12
 /** How far a press may wander before it counts as a drag. */
 const DRAG_SLOP = 4
+/** Smallest frame, in board units. */
+const FRAME_MIN = { w: 240, h: 160 }
 
 /** A text field that isn't being edited yet: pressing it may still drag its card. */
 const isIdleTextField = (t: EventTarget | null): t is HTMLInputElement | HTMLTextAreaElement =>
@@ -102,6 +104,10 @@ export function Canvas() {
           }
           const dx = (e.clientX - d.sx) / s.view.z
           const dy = (e.clientY - d.sy) / s.view.z
+          // Drawings in a frame follow its snapped move.
+          const o = d.from.get(d.clicked)
+          const sdx = o ? snap(o.x + dx) - o.x : dx
+          const sdy = o ? snap(o.y + dy) - o.y : dy
           s.change(
             (b) => ({
               ...b,
@@ -112,9 +118,26 @@ export function Canvas() {
                 const y = snap(o.y + dy)
                 return n.x === x && n.y === y ? n : { ...n, x, y }
               }),
+              strokes: d.strokes.size
+                ? b.strokes.map((k) => {
+                    const pts = d.strokes.get(k.id)
+                    return pts ? { ...k, pts: pts.map(([x, y]) => [x + sdx, y + sdy] as [number, number]) } : k
+                  })
+                : b.strokes,
             }),
             'silent',
           )
+          break
+        }
+        case 'resize': {
+          if (!d.moved) {
+            if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < DRAG_SLOP) return
+            d.moved = true
+            s.change((b) => ({ ...b }), 'step')
+          }
+          const w = Math.max(FRAME_MIN.w, snap(d.w0 + (e.clientX - d.sx) / s.view.z))
+          const h = Math.max(FRAME_MIN.h, snap(d.h0 + (e.clientY - d.sy) / s.view.z))
+          s.updateNode(d.id, (n) => (n.type === 'frame' && (n.w !== w || n.h !== h) ? { ...n, w, h } : n), 'silent')
           break
         }
         case 'port': {
@@ -131,6 +154,8 @@ export function Canvas() {
           const hits = (s.board?.nodes ?? [])
             .filter((n) => {
               const r = nodeBox(n, s.sizes)
+              // A frame needs to be wholly in the box, so a box drawn inside one leaves it out.
+              if (n.type === 'frame') return containsBox(box, r)
               return r.x < box.x + box.w && r.x + r.w > box.x && r.y < box.y + box.h && r.y + r.h > box.y
             })
             .map((n) => n.id)
@@ -193,6 +218,7 @@ export function Canvas() {
         useOverlay.getState().set({ drawing: null })
       }
       if (d.type === 'erase' && d.stepped) s.log('erased a drawing')
+      if (d.type === 'resize' && d.moved) s.log('resized a frame')
       gesture.drag = null
     }
 
@@ -212,7 +238,7 @@ export function Canvas() {
     const el = ref.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
-      if (e.target instanceof Element && e.target.closest('textarea, iframe')) return
+      if (e.target instanceof Element && e.target.closest('textarea, iframe, [data-wheel]')) return
       e.preventDefault()
       const s = useBoard.getState()
       const v = s.view
@@ -269,10 +295,19 @@ export function Canvas() {
 
     const target = e.target as Element
     const port = target.closest('[data-port]')?.getAttribute('data-port')
+    const resize = target.closest('[data-resize]')?.getAttribute('data-resize')
     const cardId = target.closest('[data-node-id]')?.getAttribute('data-node-id')
 
     if (port) {
       gesture.drag = { type: 'port', id: port, sx: e.clientX, sy: e.clientY, moved: false }
+      return
+    }
+    if (resize && s.tool === 'select') {
+      const n = s.board?.nodes.find((x) => x.id === resize)
+      if (n?.type !== 'frame') return
+      e.preventDefault()
+      s.set({ sel: { nodes: [resize] } })
+      gesture.drag = { type: 'resize', id: resize, sx: e.clientX, sy: e.clientY, w0: n.w, h0: n.h, moved: false }
       return
     }
 
@@ -312,9 +347,13 @@ export function Canvas() {
         next = [cardId]
         s.set({ sel: { nodes: next } })
       }
-      const nodes = s.board?.nodes ?? []
-      const from = new Map(nodes.filter((n) => next.includes(n.id)).map((n) => [n.id, { x: n.x, y: n.y }]))
-      gesture.drag = { type: 'nodes', from, sx: e.clientX, sy: e.clientY, moved: false, clicked: cardId, additive }
+      const board = s.board!
+      // Frames carry the cards and drawings inside them.
+      const inner = frameContents(board, s.sizes, next)
+      const moving = new Set([...next, ...inner.nodes])
+      const from = new Map(board.nodes.filter((n) => moving.has(n.id)).map((n) => [n.id, { x: n.x, y: n.y }]))
+      const strokes = new Map(board.strokes.filter((k) => inner.strokes.includes(k.id)).map((k) => [k.id, k.pts]))
+      gesture.drag = { type: 'nodes', from, sx: e.clientX, sy: e.clientY, moved: false, clicked: cardId, additive, strokes }
       return
     }
 

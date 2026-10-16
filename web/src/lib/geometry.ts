@@ -66,6 +66,14 @@ export function fitView(boxes: Box[], w: number, h: number, pad: Insets): View |
   }
 }
 
+/** Whether `inner` lies entirely within `outer`. */
+export const containsBox = (outer: Box, inner: Box) =>
+  inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h
+
+/** Whether every point lies within `b`. */
+export const pointsInBox = (pts: ReadonlyArray<readonly [number, number]>, b: Box) =>
+  pts.length > 0 && pts.every(([x, y]) => x >= b.x && y >= b.y && x <= b.x + b.w && y <= b.y + b.h)
+
 export const snap = (v: number, grid = 20) => Math.round(v / grid) * grid
 
 type Pt = readonly [number, number]

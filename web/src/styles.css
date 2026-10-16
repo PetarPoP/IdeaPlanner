@@ -20,6 +20,12 @@
   --color-note-from: #2e2a48;
   --color-note-to: #25243a;
 
+  /* Card palette (see CARD_COLORS). */
+  --color-amber: #f0b86e;
+  --color-mint: #7fd1b9;
+  --color-rose: #f08a8a;
+  --color-sky: #82b4f0;
+
   --color-accent: #9184d9;
   --color-accent-100: #f5f4ff;
   --color-accent-200: #e7e5fe;

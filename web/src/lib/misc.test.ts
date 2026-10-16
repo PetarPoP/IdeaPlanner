@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { edgePath, fitView, zoomAt } from './geometry'
+import { containsBox, edgePath, fitView, pointsInBox, zoomAt } from './geometry'
 import { drawNames } from './santa'
 import { TEMPLATES, fromTemplate, newCard } from './templates'
 
@@ -55,5 +55,16 @@ describe('templates', () => {
 
   it('creates cards with fresh ids', () => {
     expect(newCard('note').id).not.toBe(newCard('note').id)
+  })
+})
+
+describe('containment', () => {
+  it('needs the whole box or every point inside', () => {
+    const f = { x: 0, y: 0, w: 100, h: 100 }
+    expect(containsBox(f, { x: 10, y: 10, w: 90, h: 90 })).toBe(true)
+    expect(containsBox(f, { x: 10, y: 10, w: 91, h: 20 })).toBe(false)
+    expect(pointsInBox([[0, 0], [100, 100]], f)).toBe(true)
+    expect(pointsInBox([[50, 50], [101, 50]], f)).toBe(false)
+    expect(pointsInBox([], f)).toBe(false)
   })
 })

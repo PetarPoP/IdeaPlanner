@@ -1,8 +1,8 @@
 import type { Icon as PhosphorIcon, IconWeight } from '@phosphor-icons/react'
 import {
   AirplaneTilt, Backpack, Bag, Bed, Binoculars, Cake, CalendarDots, CarProfile, Champagne, ChartBar,
-  CheckSquare, Coins, Confetti, EnvelopeSimple, ForkKnife, Gift, Hammer, Heart, House, Image, Lightbulb, Link, ListHeart,
-  MapTrifold, Mountains, Package, PersonSimpleSwim, Plus, PushPin, Receipt, Scroll, Shuffle, Sparkle, Storefront,
+  CheckSquare, Coins, Confetti, EnvelopeSimple, ForkKnife, FrameCorners, Gift, Hammer, Heart, House, Image, Lightbulb, Link, ListHeart,
+  MapTrifold, Mountains, Note, Package, PersonSimpleSwim, Plus, PushPin, Receipt, Scroll, Shuffle, Sparkle, Storefront,
   Suitcase, Tent, Ticket, UmbrellaSimple, Users, Van,
 } from '@phosphor-icons/react'
 
@@ -26,6 +26,7 @@ const REGISTRY: Record<string, PhosphorIcon> = {
   confetti: Confetti,
   'envelope-simple': EnvelopeSimple,
   'fork-knife': ForkKnife,
+  'frame-corners': FrameCorners,
   gift: Gift,
   hammer: Hammer,
   heart: Heart,
@@ -36,6 +37,7 @@ const REGISTRY: Record<string, PhosphorIcon> = {
   'list-heart': ListHeart,
   'map-trifold': MapTrifold,
   mountains: Mountains,
+  note: Note,
   package: Package,
   'person-simple-swim': PersonSimpleSwim,
   plus: Plus,

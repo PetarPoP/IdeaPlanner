@@ -3,7 +3,7 @@ import type { Board, Edge, Node } from '~/lib/model.gen'
 import type { NodeType } from '~/lib/catalog'
 import { KIND_NOUN } from '~/lib/catalog'
 import type { Box, View } from '~/lib/geometry'
-import { clampZoom, fitView, zoomAt } from '~/lib/geometry'
+import { clampZoom, containsBox, fitView, pointsInBox, zoomAt } from '~/lib/geometry'
 import { uid } from '~/lib/ids'
 import { drawNames } from '~/lib/santa'
 import type { TemplateKey } from '~/lib/templates'
@@ -63,6 +63,10 @@ interface State {
   addOpen: boolean
   sidebar: boolean
   mode: ViewMode
+  /** Who "I" am on this board: an index into `board.people` (authors comments). */
+  me: number
+  /** Card whose comment thread is open. */
+  thread: string | null
 }
 
 interface Actions {
@@ -92,6 +96,11 @@ interface Actions {
   pushToMap(fromId: string, input: string, what: string): void
   drawNames(id: string): void
   applyTemplate(key: TemplateKey, name: string): void
+  /** Sets the palette colour of every selected card (one undo step). */
+  setColor(color: string): void
+  addComment(id: string, text: string): void
+  deleteComment(id: string, commentId: string): void
+  setMe(me: number): void
 
   set(patch: Partial<State>): void
   togglePanel(panel: Panel): void
@@ -119,6 +128,27 @@ function readMode(): ViewMode {
     return m && MODES.includes(m) ? m : 'board'
   } catch {
     return 'board'
+  }
+}
+
+const ME_KEY = 'ideaPlanner.me'
+
+/** Who I am on each board, by board id. */
+function readMe(boardId: string): number {
+  try {
+    const v = (JSON.parse(localStorage.getItem(ME_KEY) ?? '{}') as Record<string, unknown>)[boardId]
+    return typeof v === 'number' && v >= 0 ? v : 0
+  } catch {
+    return 0
+  }
+}
+
+function writeMe(boardId: string, me: number) {
+  try {
+    const all = JSON.parse(localStorage.getItem(ME_KEY) ?? '{}') as Record<string, number>
+    localStorage.setItem(ME_KEY, JSON.stringify({ ...all, [boardId]: me }))
+  } catch {
+    // Not remembered; defaults to the first person.
   }
 }
 
@@ -163,7 +193,18 @@ function fitPeople(n: Node, people: number): Node {
 /** A card's box on the board, using its measured height once known. */
 export function nodeBox(n: Node, sizes: State['sizes']): Box {
   const s = sizes[n.id]
-  return { x: n.x, y: n.y, w: s?.w ?? n.w, h: s?.h ?? 160 }
+  return { x: n.x, y: n.y, w: s?.w ?? n.w, h: s?.h ?? (n.type === 'frame' ? n.h : 160) }
+}
+
+/** Cards (other than the frames themselves) and drawings lying wholly inside the frames `ids`. */
+export function frameContents(board: Board, sizes: State['sizes'], ids: readonly string[]): { nodes: string[]; strokes: string[] } {
+  const frames = board.nodes.filter((n) => n.type === 'frame' && ids.includes(n.id)).map((n) => nodeBox(n, sizes))
+  if (!frames.length) return { nodes: [], strokes: [] }
+  const inside = (b: Box) => frames.some((f) => containsBox(f, b))
+  return {
+    nodes: board.nodes.filter((n) => !ids.includes(n.id) && inside(nodeBox(n, sizes))).map((n) => n.id),
+    strokes: board.strokes.filter((k) => frames.some((f) => pointsInBox(k.pts, f))).map((k) => k.id),
+  }
 }
 
 export const useBoard = create<BoardStore>()((set, get) => {
@@ -203,9 +244,24 @@ export const useBoard = create<BoardStore>()((set, get) => {
     addOpen: false,
     sidebar: false,
     mode: readMode(),
+    me: 0,
+    thread: null,
 
     hydrate: (board, sync) =>
-      set({ board, sync, past: [], future: [], editBase: null, sel: null, sizes: {}, connectFrom: null, dialog: null, addOpen: false }),
+      set({
+        board,
+        sync,
+        past: [],
+        future: [],
+        editBase: null,
+        sel: null,
+        sizes: {},
+        connectFrom: null,
+        dialog: null,
+        addOpen: false,
+        thread: null,
+        me: Math.min(readMe(board.id), Math.max(0, board.people.length - 1)),
+      }),
     setSync: (sync) => set({ sync }),
 
     change: (fn, mode = 'step') => {
@@ -364,6 +420,30 @@ export const useBoard = create<BoardStore>()((set, get) => {
       get().log(`started from the ${name} template`)
       // Cards are measured on the next frames; fit once they are.
       setTimeout(() => get().fit(), 80)
+    },
+
+    setColor: (color) => {
+      const ids = new Set(selectedNodes(get().sel))
+      if (!get().board?.nodes.some((n) => ids.has(n.id) && n.color !== color)) return
+      get().change((b) => ({ ...b, nodes: b.nodes.map((n) => (ids.has(n.id) && n.color !== color ? { ...n, color } : n)) }))
+    },
+
+    addComment: (id, text) => {
+      const { board, me } = get()
+      const n = board?.nodes.find((x) => x.id === id)
+      const body = text.trim()
+      if (!board || !n || !body) return
+      const comment = { id: uid(), who: board.people[me]?.name ?? 'You', text: body, t: Date.now() }
+      get().updateNode(id, (x) => ({ ...x, comments: [...x.comments, comment] }))
+      get().log(`commented on ${n.title || 'a card'}`)
+    },
+
+    deleteComment: (id, commentId) => get().updateNode(id, (n) => ({ ...n, comments: n.comments.filter((c) => c.id !== commentId) })),
+
+    setMe: (me) => {
+      set({ me })
+      const id = get().board?.id
+      if (id) writeMe(id, me)
     },
 
     set: (patch) => set(patch),

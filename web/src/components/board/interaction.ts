@@ -14,7 +14,10 @@ export type Drag =
       /** Card under the pointer, to select alone on a click without a move. */
       clicked: string
       additive: boolean
+      /** Drawings inside dragged frames, with their points at the start. */
+      strokes: Map<string, Array<[number, number]>>
     }
+  | { type: 'resize'; id: string; sx: number; sy: number; w0: number; h0: number; moved: boolean }
   | { type: 'port'; id: string; sx: number; sy: number; moved: boolean }
   | { type: 'marquee'; sx: number; sy: number; additive: boolean; base: string[] }
   | { type: 'pen' }

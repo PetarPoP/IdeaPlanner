@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { simplify, smoothPath } from '~/lib/geometry'
 import { fromTemplate } from '~/lib/templates'
-import { selectedNodes, strokeNear, useBoard } from './board'
+import { frameContents, selectedNodes, strokeNear, useBoard } from './board'
 
 const s = () => useBoard.getState()
 
@@ -60,5 +60,57 @@ describe('drawing', () => {
     const line: Array<[number, number]> = Array.from({ length: 20 }, (_, i) => [i, 0])
     expect(simplify(line, 0.5)).toEqual([[0, 0], [19, 0]])
     expect(smoothPath([[0, 0], [10, 10], [20, 0]])).toBe('M0,0 Q10,10 15,5 L20,0')
+  })
+})
+
+describe('colours and comments', () => {
+  it('colours every selected card in one undo step', () => {
+    s().set({ sel: { nodes: ['d1', 'd2'] } })
+    const steps = s().past.length
+    s().setColor('mint')
+    expect(s().board!.nodes.filter((n) => n.color === 'mint').map((n) => n.id)).toEqual(['d1', 'd2'])
+    expect(s().past.length).toBe(steps + 1)
+    s().setColor('mint')
+    expect(s().past.length).toBe(steps + 1)
+    s().undo()
+    expect(s().board!.nodes.some((n) => n.color === 'mint')).toBe(false)
+  })
+
+  it('adds a comment as the current person, logs it, and deletes it', () => {
+    s().setMe(1)
+    s().addComment('d1', '  Book early?  ')
+    s().addComment('d1', '   ')
+    const n = s().board!.nodes.find((x) => x.id === 'd1')!
+    expect(n.comments).toHaveLength(1)
+    expect(n.comments[0]).toMatchObject({ who: s().board!.people[1]!.name, text: 'Book early?' })
+    expect(s().board!.activity[0]!.msg).toBe(`commented on ${n.title}`)
+    s().deleteComment('d1', n.comments[0]!.id)
+    expect(s().board!.nodes.find((x) => x.id === 'd1')!.comments).toEqual([])
+    s().undo()
+    expect(s().board!.nodes.find((x) => x.id === 'd1')!.comments).toHaveLength(1)
+  })
+})
+
+describe('frames', () => {
+  it('finds the cards and drawings wholly inside a frame', () => {
+    s().addNode('frame', { x: 0, y: 0 })
+    const id = selectedNodes(s().sel)[0]!
+    s().change((b) => ({
+      ...b,
+      nodes: b.nodes.map((n) => (n.id === id ? { ...n, x: -2000, y: -2000, w: 700 } : n)),
+      strokes: [
+        { id: 'in', pts: [[-1900, -1900], [-1800, -1850]], color: '' },
+        { id: 'out', pts: [[-1900, -1900], [0, 0]], color: '' },
+      ],
+    }))
+    s().addNode('sticky', { x: -1800, y: -1700 })
+    const inside = selectedNodes(s().sel)[0]!
+    s().addNode('note', { x: -1400, y: -1700 })
+    const across = selectedNodes(s().sel)[0]!
+    const sizes = { [inside]: { w: 200, h: 180 }, [across]: { w: 260, h: 200 } }
+    const got = frameContents(s().board!, sizes, [id])
+    expect(got.nodes).toEqual([inside])
+    expect(got.strokes).toEqual(['in'])
+    expect(frameContents(s().board!, sizes, [inside])).toEqual({ nodes: [], strokes: [] })
   })
 })

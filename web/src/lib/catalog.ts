@@ -32,6 +32,8 @@ export const KIND_NOUN: Partial<Record<NodeType, string>> = {
 /** Every card people can add, in menu order. */
 export const CARD_MENU: ReadonlyArray<{ type: NodeType; icon: string; label: string; desc: string }> = [
   { type: 'note', icon: 'lightbulb', label: 'Idea', desc: 'A note the group can vote on' },
+  { type: 'sticky', icon: 'note', label: 'Sticky note', desc: 'A quick coloured note' },
+  { type: 'frame', icon: 'frame-corners', label: 'Frame', desc: 'Group cards in an area' },
   { type: 'section', icon: 'coins', label: 'Cost card', desc: 'Items with auto-sum' },
   { type: 'itinerary', icon: 'calendar-dots', label: 'Day plan', desc: 'Stops with times and costs' },
   { type: 'booking', icon: 'airplane-tilt', label: 'Booking', desc: 'Flight, stay, car, ticket' },
@@ -44,6 +46,34 @@ export const CARD_MENU: ReadonlyArray<{ type: NodeType; icon: string; label: str
   { type: 'email', icon: 'envelope-simple', label: 'Email', desc: 'Paste or forward an email' },
   { type: 'santa', icon: 'shuffle', label: 'Name draw', desc: 'Secret Santa pairs' },
 ]
+
+export interface CardColor {
+  /** Stored in `Node.color`; empty is the default surface. */
+  key: string
+  label: string
+  /** Card background. */
+  bg: string
+  /** Top edge, frame border and swatch. */
+  border: string
+}
+
+const tint = (c: string, pct: number) => `color-mix(in srgb, ${c} ${pct}%, var(--color-surface))`
+
+/** Card colours, in picker order. */
+export const CARD_COLORS: readonly CardColor[] = [
+  { key: '', label: 'Default', bg: 'var(--color-surface)', border: 'var(--color-neutral-600)' },
+  { key: 'violet', label: 'Violet', bg: tint('var(--color-accent)', 22), border: 'var(--color-accent-400)' },
+  { key: 'amber', label: 'Amber', bg: tint('var(--color-amber)', 18), border: 'var(--color-amber)' },
+  { key: 'mint', label: 'Mint', bg: tint('var(--color-mint)', 16), border: 'var(--color-mint)' },
+  { key: 'rose', label: 'Rose', bg: tint('var(--color-rose)', 18), border: 'var(--color-rose)' },
+  { key: 'sky', label: 'Sky', bg: tint('var(--color-sky)', 18), border: 'var(--color-sky)' },
+]
+
+/** The palette entry for a stored colour key (unknown keys get the default). */
+export const cardColor = (key: string): CardColor => CARD_COLORS.find((c) => c.key === key) ?? CARD_COLORS[0]!
+
+/** Paper for a sticky: stronger than a card tint, amber when uncoloured. */
+export const stickyPaper = (key: string) => tint(cardColor(key || 'amber').border, 34)
 
 export const PLACE_CATEGORIES: ReadonlyArray<{ label: string; icon: string }> = [
   { label: 'Beach', icon: 'umbrella-simple' },

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Copy, Crosshair, MagnifyingGlass, Plus, Trash } from '@phosphor-icons/react'
+import { ChatCircle, Copy, Crosshair, MagnifyingGlass, Plus, Trash } from '@phosphor-icons/react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Node } from '~/lib/model.gen'
 import type { NodeType } from '~/lib/catalog'
 import { KIND_LABEL } from '~/lib/catalog'
 import { useBoard } from '~/store/board'
-import { CardBody, CardHeader } from '../board/NodeCard'
+import { CardBody, CardHeader, cardBackground, colorEdge } from '../board/NodeCard'
 import { CardMenu } from '../chrome/Toolbar'
 import { Popover } from '../chrome/Popover'
 import { cx } from '../ui'
@@ -19,6 +19,8 @@ export function ListView() {
   const cards = useBoard(
     useShallow((s) =>
       (s.board?.nodes ?? [])
+        // Frames are areas on the board, not content.
+        .filter((n) => n.type !== 'frame')
         .map((n) => ({ id: n.id, x: n.x, y: n.y, type: n.type }))
         .sort(byPosition)
         .map((n) => `${n.id}:${n.type}`),
@@ -117,17 +119,22 @@ function ListCard({ id, fresh }: { id: string; fresh: boolean }) {
   const frame = useBoard(
     useShallow((s) => {
       const n = s.board?.nodes.find((x) => x.id === id)
-      return n && { title: n.title, icon: n.icon, accent: n.accent, type: n.type }
+      return n && { title: n.title, icon: n.icon, accent: n.accent, color: n.color, type: n.type }
     }),
   )
+  const thread = useBoard((s) => s.thread === id)
   if (!frame) return null
   const s = useBoard.getState
   const action = 'grid size-7 place-items-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-900 hover:text-text'
   return (
     <div
       data-list-id={id}
-      className={cx('anim-card group mb-4 flex break-inside-avoid flex-col rounded-[14px]', fresh ? 'shadow-card-active' : 'shadow-card')}
-      style={{ background: frame.accent ? 'linear-gradient(180deg,var(--color-note-from),var(--color-note-to))' : 'var(--color-surface)' }}
+      className="anim-card group relative mb-4 flex break-inside-avoid flex-col rounded-[14px]"
+      style={{
+        background: cardBackground(frame),
+        boxShadow: colorEdge(frame) + (fresh ? 'var(--shadow-card-active)' : 'var(--shadow-card)'),
+        zIndex: thread ? 10 : undefined,
+      }}
     >
       <CardHeader
         id={id}
@@ -136,6 +143,9 @@ function ListCard({ id, fresh }: { id: string; fresh: boolean }) {
         type={frame.type}
         extra={
           <span className="flex opacity-60 transition-opacity group-hover:opacity-100 max-md:opacity-100">
+            <button type="button" title="Comment" onClick={() => s().set({ thread: id })} className={action}>
+              <ChatCircle />
+            </button>
             <button type="button" title="Show on the board" onClick={() => s().focusNode(id)} className={action}>
               <Crosshair />
             </button>

@@ -1,15 +1,16 @@
 import type { Icon } from '@phosphor-icons/react'
 import {
-  ArrowClockwise, ArrowCounterClockwise, ArrowsOut, CalendarDots, Coins, Copy, Cursor, Eraser, FlowArrow, Hand,
+  ArrowClockwise, ArrowCounterClockwise, ArrowsOut, CalendarDots, ChatCircle, Coins, Copy, Cursor, Eraser, FlowArrow, Hand,
   Info, Keyboard, MapTrifold, Minus, Note, Palette, PencilSimple, Plus, PlusCircle, Scissors, SquaresFour, Trash, Wallet,
 } from '@phosphor-icons/react'
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import type { NodeType } from '~/lib/catalog'
-import { CARD_MENU, KIND_LABEL } from '~/lib/catalog'
+import { CARD_COLORS, CARD_MENU, KIND_LABEL } from '~/lib/catalog'
 import { NamedIcon } from '~/lib/icons'
 import type { Tool } from '~/store/board'
 import { PEN_COLORS, isMobileWidth, selectedNodes, useBoard } from '~/store/board'
 import { copyToClipboard } from '~/hooks/useClipboard'
+import { MiniMap } from '../board/MiniMap'
 import { cx } from '../ui'
 
 const TOOLS: ReadonlyArray<{ tool: Tool; icon: Icon; short: string; label: string }> = [
@@ -114,55 +115,88 @@ export function Toolbar() {
   )
 }
 
+const MINIMAP_KEY = 'ideaPlanner.minimap'
+
+function readMiniMap(): boolean {
+  try {
+    return localStorage.getItem(MINIMAP_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
 export function ZoomBar() {
+  const [mini, setMini] = useState(readMiniMap)
   const z = useBoard((s) => s.view.z)
   const canUndo = useBoard((s) => s.past.length > 0)
   const canRedo = useBoard((s) => s.future.length > 0)
   const mobile = useBoard((s) => isMobileWidth(s.vw))
   const hidden = useBoard((s) => isMobileWidth(s.vw) && s.panel != null)
   const { undo, redo, zoomBy, fit } = useBoard.getState()
+  const toggleMini = () => {
+    setMini(!mini)
+    try {
+      localStorage.setItem(MINIMAP_KEY, mini ? '0' : '1')
+    } catch {
+      // Not remembered; shown again next time.
+    }
+  }
 
   return (
-    <div
-      className={cx(
-        'glass absolute right-2 bottom-[78px] z-[41] flex flex-col items-center gap-0.5 rounded-xl p-1 md:right-[18px] md:bottom-[18px] md:flex-row',
-        hidden && 'hidden',
-      )}
-    >
-      <button type="button" title="Undo (⌘Z)" onClick={undo} disabled={!canUndo} className="btn btn-icon text-neutral-300 disabled:opacity-35">
-        <ArrowCounterClockwise />
-      </button>
-      <button type="button" title="Redo (⇧⌘Z)" onClick={redo} disabled={!canRedo} className="btn btn-icon text-neutral-300 disabled:opacity-35">
-        <ArrowClockwise />
-      </button>
-      {!mobile && (
-        <>
-          <span className="h-5 w-px bg-neutral-800" />
-          <button type="button" title="Zoom out" onClick={() => zoomBy(1 / 1.2)} className="btn btn-icon text-neutral-300">
-            <Minus />
-          </button>
-          <button type="button" title="Reset zoom" onClick={() => zoomBy(1 / z)} className="min-w-12 text-xs text-neutral-300">
-            {Math.round(z * 100)}%
-          </button>
-          <button type="button" title="Zoom in" onClick={() => zoomBy(1.2)} className="btn btn-icon text-neutral-300">
-            <Plus />
-          </button>
-        </>
-      )}
-      <button type="button" title="Fit to screen (F)" onClick={fit} className="btn btn-icon text-neutral-300">
-        <ArrowsOut />
-      </button>
-      {!mobile && (
-        <button
-          type="button"
-          title="Keyboard shortcuts (?)"
-          onClick={() => useBoard.getState().toggleDialog('shortcuts')}
-          className="btn btn-icon text-neutral-300"
-        >
-          <Keyboard />
+    <>
+      {mini && !mobile && !hidden && <MiniMap />}
+      <div
+        className={cx(
+          'glass absolute right-2 bottom-[78px] z-[41] flex flex-col items-center gap-0.5 rounded-xl p-1 md:right-[18px] md:bottom-[18px] md:flex-row',
+          hidden && 'hidden',
+        )}
+      >
+        <button type="button" title="Undo (⌘Z)" onClick={undo} disabled={!canUndo} className="btn btn-icon text-neutral-300 disabled:opacity-35">
+          <ArrowCounterClockwise />
         </button>
-      )}
-    </div>
+        <button type="button" title="Redo (⇧⌘Z)" onClick={redo} disabled={!canRedo} className="btn btn-icon text-neutral-300 disabled:opacity-35">
+          <ArrowClockwise />
+        </button>
+        {!mobile && (
+          <>
+            <span className="h-5 w-px bg-neutral-800" />
+            <button type="button" title="Zoom out" onClick={() => zoomBy(1 / 1.2)} className="btn btn-icon text-neutral-300">
+              <Minus />
+            </button>
+            <button type="button" title="Reset zoom" onClick={() => zoomBy(1 / z)} className="min-w-12 text-xs text-neutral-300">
+              {Math.round(z * 100)}%
+            </button>
+            <button type="button" title="Zoom in" onClick={() => zoomBy(1.2)} className="btn btn-icon text-neutral-300">
+              <Plus />
+            </button>
+          </>
+        )}
+        <button type="button" title="Fit to screen (F)" onClick={fit} className="btn btn-icon text-neutral-300">
+          <ArrowsOut />
+        </button>
+        {!mobile && (
+          <button
+            type="button"
+            title="Keyboard shortcuts (?)"
+            onClick={() => useBoard.getState().toggleDialog('shortcuts')}
+            className="btn btn-icon text-neutral-300"
+          >
+            <Keyboard />
+          </button>
+        )}
+        {!mobile && (
+          <button
+            type="button"
+            title={mini ? 'Hide the mini-map' : 'Show the mini-map'}
+            aria-pressed={mini}
+            onClick={toggleMini}
+            className={cx('btn btn-icon', mini ? 'text-accent-300' : 'text-neutral-300')}
+          >
+            <MapTrifold />
+          </button>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -177,7 +211,12 @@ export function SelectionBar() {
     const ids = selectedNodes(s.sel)
     return ids.length === 1 ? s.board?.nodes.find((n) => n.id === ids[0]) : undefined
   })
-  const { duplicateSelection, deleteSelection, set, setTool, updateNode, change } = useBoard.getState()
+  const color = useBoard((s) => {
+    const ids = selectedNodes(s.sel)
+    const colors = new Set(s.board?.nodes.filter((n) => ids.includes(n.id)).map((n) => n.color))
+    return colors.size === 1 ? [...colors][0]! : null
+  })
+  const { duplicateSelection, deleteSelection, set, setTool, updateNode, change, setColor } = useBoard.getState()
 
   const hint =
     tool === 'connect'
@@ -239,6 +278,35 @@ export function SelectionBar() {
                 <Palette />
                 Tint
               </button>
+              {node && (
+                <button type="button" title="Comments" onClick={() => set({ thread: node.id })} className={ghost}>
+                  <ChatCircle />
+                  Comment
+                </button>
+              )}
+              <span className="mx-0.5 h-5 w-px flex-none bg-neutral-800" />
+              <span className="flex flex-none items-center" role="group" aria-label="Card colour">
+                {CARD_COLORS.map((c) => (
+                  <button
+                    key={c.key || 'default'}
+                    type="button"
+                    title={c.label}
+                    aria-label={`${c.label} colour`}
+                    aria-pressed={color === c.key}
+                    onClick={() => setColor(c.key)}
+                    className="grid size-7 place-items-center rounded-full"
+                  >
+                    <span
+                      className="size-4 rounded-full"
+                      style={{
+                        background: c.key ? c.border : 'var(--color-surface)',
+                        boxShadow: color === c.key ? '0 0 0 2px var(--color-bg), 0 0 0 3.5px var(--color-accent)' : `inset 0 0 0 1px ${c.key ? 'transparent' : 'var(--color-neutral-600)'}`,
+                      }}
+                    />
+                  </button>
+                ))}
+              </span>
+              <span className="mx-0.5 h-5 w-px flex-none bg-neutral-800" />
             </Fragment>
           )}
           <button type="button" title="Delete (Del)" onClick={deleteSelection} className={ghost}>
