@@ -2,6 +2,7 @@ import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'rea
 import { Minus, Plus, X } from '@phosphor-icons/react'
 import { useBoard } from '~/store/board'
 import type { ChangeMode } from '~/store/board'
+import { CURRENCIES } from '~/lib/catalog'
 import { cleanAmount } from '~/lib/money'
 
 export const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
@@ -55,6 +56,8 @@ export function CostField({
   paid = false,
   width = 44,
   placeholder = '0',
+  ownCur,
+  onCur,
 }: {
   cur: string
   value: string
@@ -62,7 +65,12 @@ export function CostField({
   paid?: boolean
   width?: number
   placeholder?: string
+  /** This amount's own currency when it isn't the board's (`cur`). */
+  ownCur?: string
+  /** Lets people pick another currency for this amount. */
+  onCur?: (cur: string) => void
 }) {
+  const shown = ownCur || cur
   return (
     <label
       className={cx(
@@ -74,7 +82,25 @@ export function CostField({
             : 'border border-dashed border-neutral-800 text-neutral-600',
       )}
     >
-      <span>{cur}</span>
+      {onCur ? (
+        <span className={cx('relative', shown !== cur && 'text-accent-300')} title="Currency">
+          {shown}
+          <select
+            aria-label="Currency"
+            value={shown}
+            onChange={(e) => onCur(e.target.value === cur ? '' : e.target.value)}
+            className="absolute inset-0 cursor-pointer opacity-0"
+          >
+            {[...new Set([cur, ...CURRENCIES, shown])].map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </span>
+      ) : (
+        <span>{shown}</span>
+      )}
       <Field
         value={value}
         onValue={(v, m) => onValue(cleanAmount(v), m)}

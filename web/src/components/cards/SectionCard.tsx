@@ -6,15 +6,16 @@ import { money, num } from '~/lib/money'
 import { newItem } from '~/lib/templates'
 import { addRow, patchRow, removeRow, useBoard, useNode } from '~/store/board'
 import { AddRowButton, CostField, Field, PlanPaidBar, RemoveButton } from '../ui'
-import { useBoardMeta } from './hooks'
+import { useBoardMeta, useRate } from './hooks'
 
 export function SectionCard({ id }: { id: string }) {
+  const rate = useRate()
   const n = useNode(id, 'section')
   const { cur, splitN, people } = useBoardMeta()
   if (!n) return null
 
-  const total = nodeTotal(n)
-  const paid = nodePaid(n)
+  const total = nodeTotal(n, rate)
+  const paid = nodePaid(n, rate)
   const budget = num(n.budget)
   const base = budget || total || 1
   const over = budget > 0 && total > budget
@@ -56,7 +57,7 @@ export function SectionCard({ id }: { id: string }) {
                 {people[i.payer]?.ini ?? '?'}
               </button>
             )}
-            <CostField cur={cur} value={i.cost} paid={i.paid} onValue={(cost, m) => row(i, { cost }, m)} />
+            <CostField cur={cur} ownCur={i.cur} onCur={(c) => row(i, { cur: c })} value={i.cost} paid={i.paid} onValue={(cost, m) => row(i, { cost }, m)} />
             <RemoveButton onClick={() => removeRow(id, 'items', i.id)} />
           </div>
         ))}

@@ -22,6 +22,7 @@ import { StickyCard } from '../cards/StickyCard'
 import { FrameCard } from '../cards/FrameCard'
 import { CommentBadge } from '../cards/Comments'
 import { Field, cx } from '../ui'
+import { useLive } from '~/store/live'
 import { useOverlay } from './interaction'
 
 export function CardBody({ id, type, selected }: { id: string; type: Node['type']; selected: boolean }): ReactNode {
@@ -115,6 +116,8 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
   const mobile = useBoard((s) => isMobileWidth(s.vw))
   const lifted = useOverlay((s) => s.dragging) && selected
   const thread = useBoard((s) => s.thread === id)
+  // Someone else on the board has this card selected.
+  const peer = useLive((s) => Object.values(s.peers).find((p) => p.sel?.includes(id)))
   const ref = useRef<HTMLDivElement>(null)
 
   // Edges, the selection box and "fit" need real card heights.
@@ -162,7 +165,7 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
         zIndex: selected || thread ? 20 : 5,
         scale: lifted ? '1.012' : undefined,
         background: cardBackground(frame),
-        boxShadow: colorEdge(frame) + (lifted ? 'var(--shadow-card-lift)' : active ? 'var(--shadow-card-active)' : 'var(--shadow-card)'),
+        boxShadow: (peer ? `0 0 0 2px ${peer.color},` : '') + colorEdge(frame) + (lifted ? 'var(--shadow-card-lift)' : active ? 'var(--shadow-card-active)' : 'var(--shadow-card)'),
       }}
     >
       {!sticky && (
@@ -170,6 +173,12 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
       )}
 
       <CardBody id={id} type={frame.type} selected={selected && only} />
+
+      {peer && (
+        <span className="anim-pop pointer-events-none absolute -top-2.5 left-3 rounded-md px-1.5 py-px text-[10px] font-medium text-bg" style={{ background: peer.color }}>
+          {peer.name || 'Guest'}
+        </span>
+      )}
 
       <div
         data-port={id}

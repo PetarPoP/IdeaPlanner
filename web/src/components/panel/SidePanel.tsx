@@ -2,17 +2,22 @@ import { useState } from 'react'
 import type { Icon } from '@phosphor-icons/react'
 import { ArrowRight, Check, EnvelopeSimple, CheckCircle, CheckSquare, ClockCounterClockwise, Copy, Link as LinkIcon, PencilSimple, Square, Users, Wallet, X } from '@phosphor-icons/react'
 import { QRCodeSVG } from 'qrcode.react'
-import type { Role, Task } from '~/lib/model.gen'
+import type { Task } from '~/lib/model.gen'
+import type { Transfer } from '~/lib/budget'
 import { nodeTotal, summarize } from '~/lib/budget'
-import { ME, initials } from '~/lib/catalog'
+import { uid } from '~/lib/ids'
+import { isoOf } from '~/lib/rates'
+import { initials } from '~/lib/catalog'
 import { timeAgo } from '~/lib/dates'
 import { NamedIcon } from '~/lib/icons'
 import { money, num } from '~/lib/money'
 import { shareUrl } from '~/lib/storage'
 import { useInboxAddress } from '~/hooks/useInbox'
-import type { Panel } from '~/store/board'
+import type { ChangeMode, Panel } from '~/store/board'
 import { isMobileWidth, patchRow, useBoard } from '~/store/board'
-import { Bar, PlanPaidBar, Seg, Stepper, cx } from '../ui'
+import { AccessSection } from '../account/AccessSection'
+import { Bar, Field, PlanPaidBar, Stepper, cx } from '../ui'
+import { useRate } from '../cards/hooks'
 
 const TABS: ReadonlyArray<{ key: Panel; icon: Icon; label: string }> = [
   { key: 'budget', icon: Wallet, label: 'Budget' },
@@ -91,9 +96,10 @@ export function SplitStepper() {
 }
 
 function BudgetTab() {
+  const rate = useRate()
   const { sum, m, msg, planPct, paidPct, over } = useCapMessage()
   const set = useBoard((s) => s.set)
-  const maxTotal = Math.max(1, ...sum.costed.map(nodeTotal))
+  const maxTotal = Math.max(1, ...sum.costed.map((x) => nodeTotal(x, rate)))
 
   return (
     <>
@@ -115,7 +121,7 @@ function BudgetTab() {
       <div className="flex flex-col gap-0.5">
         <div className="kicker pb-1.5">By card · tap to jump</div>
         {sum.costed.map((n) => {
-          const t = nodeTotal(n)
+          const t = nodeTotal(n, rate)
           const bud = n.type === 'section' ? num(n.budget) : 0
           return (
             <button
@@ -194,19 +200,74 @@ export function Balances() {
           )
         })}
       </div>
-      <div className="flex flex-col gap-1.5">
-        <div className="kicker">Settle up</div>
-        {sum.transfers.map((t, i) => (
-          <div key={i} className="flex items-center gap-2 rounded-lg bg-bg px-2.5 py-2 text-[13px]">
-            {board.people[t.from]?.name}
-            <ArrowRight className="text-neutral-600" />
-            {board.people[t.to]?.name}
-            <span className="ml-auto font-medium text-accent-200">{m(t.amount)}</span>
-          </div>
-        ))}
-        {!sum.transfers.length && <span className="text-xs text-neutral-500">Everyone is square.</span>}
-      </div>
+      <SettleUp transfers={sum.transfers} />
     </>
+  )
+}
+
+/** Who pays whom, with PayPal / Revolut links and "mark settled". */
+function SettleUp({ transfers }: { transfers: Transfer[] }) {
+  const { board, m } = useCapMessage()
+  const settle = (t: Transfer) => {
+    const amount = String(Math.round(t.amount * 100) / 100)
+    const s = useBoard.getState()
+    s.change((b) => ({ ...b, settlements: [...b.settlements, { id: uid(), from: t.from, to: t.to, amount, t: Date.now() }] }))
+    s.log(`marked ${board.people[t.from]?.name ?? '?'} → ${board.people[t.to]?.name ?? '?'} ${m(t.amount)} as settled`)
+  }
+  const undo = (sid: string) => useBoard.getState().change((b) => ({ ...b, settlements: b.settlements.filter((x) => x.id !== sid) }))
+  const iso = isoOf(board.cur) ?? ''
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="kicker">Settle up</div>
+      {transfers.map((t) => {
+        const to = board.people[t.to]
+        const amount = (Math.round(t.amount * 100) / 100).toFixed(2)
+        return (
+          <div key={`${t.from}-${t.to}`} className="anim-fade flex flex-col gap-2 rounded-lg bg-bg px-2.5 py-2 text-[13px]">
+            <div className="flex items-center gap-2">
+              {board.people[t.from]?.name}
+              <ArrowRight className="text-neutral-600" />
+              {to?.name}
+              <span className="ml-auto font-medium text-accent-200">{m(t.amount)}</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {to?.paypal && (
+                <a href={`https://paypal.me/${encodeURIComponent(to.paypal)}/${amount}${iso}`} target="_blank" rel="noreferrer" className="btn btn-secondary px-2 py-1 text-[11px] no-underline">
+                  PayPal
+                </a>
+              )}
+              {to?.revolut && (
+                <a href={`https://revolut.me/${encodeURIComponent(to.revolut)}`} target="_blank" rel="noreferrer" className="btn btn-secondary px-2 py-1 text-[11px] no-underline">
+                  Revolut
+                </a>
+              )}
+              {!to?.paypal && !to?.revolut && <span className="self-center text-[11px] text-neutral-600">Add {to?.name}'s PayPal or Revolut in People for a pay link.</span>}
+              <button type="button" onClick={() => settle(t)} className="btn btn-primary ml-auto px-2 py-1 text-[11px]">
+                <Check />
+                Mark settled
+              </button>
+            </div>
+          </div>
+        )
+      })}
+      {!transfers.length && <span className="anim-fade text-xs text-neutral-500">Everyone is square.</span>}
+      {board.settlements.length > 0 && (
+        <div className="mt-1 flex flex-col">
+          <span className="pb-1 text-[11px] text-neutral-500">Already paid back</span>
+          {board.settlements.map((x) => (
+            <div key={x.id} className="flex items-center gap-2 py-1 text-xs text-neutral-400">
+              <CheckCircle className="text-accent" weight="fill" />
+              {board.people[x.from]?.name} paid {board.people[x.to]?.name} {m(num(x.amount))}
+              <span className="text-neutral-600">· {timeAgo(x.t)}</span>
+              <button type="button" onClick={() => undo(x.id)} className="ml-auto text-[11px] text-neutral-500 hover:text-text">
+                Undo
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -258,18 +319,14 @@ function TasksTab() {
   )
 }
 
-const ROLES: ReadonlyArray<{ value: Role; label: string }> = [
-  { value: 'View', label: 'View' },
-  { value: 'Edit', label: 'Edit' },
-  { value: 'Admin', label: 'Admin' },
-]
-
 function PeopleTab() {
   const id = useBoard((s) => s.board!.id)
   const people = useBoard((s) => s.board!.people)
   const splitN = useBoard((s) => s.board!.splitN)
+  const me = useBoard((s) => s.me)
   const [name, setName] = useState('')
   const [copied, setCopied] = useState(false)
+  const [editing, setEditing] = useState<number | null>(null)
   const link = shareUrl(id)
   const inbox = useInboxAddress(id)
 
@@ -291,8 +348,6 @@ function PeopleTab() {
       // Clipboard blocked; the link stays visible to copy by hand.
     }
   }
-  const setRole = (i: number, role: Role) =>
-    useBoard.getState().change((b) => ({ ...b, people: b.people.map((p, j) => (j === i ? { ...p, role } : p)) }))
 
   return (
     <>
@@ -316,7 +371,7 @@ function PeopleTab() {
               <LinkIcon className="text-neutral-500" />
               <span className="flex-1 truncate font-mono text-xs text-neutral-300">{link.replace(/^https?:\/\//, '')}</span>
               <button type="button" onClick={copy} className="btn btn-secondary px-2.5 py-1 text-xs">
-                {copied ? <Check /> : <Copy />}
+                {copied ? <Check className="anim-pop" /> : <Copy />}
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
@@ -324,12 +379,13 @@ function PeopleTab() {
               <div className="size-[72px] flex-none rounded-lg bg-neutral-100 p-1.5">
                 <QRCodeSVG value={link} size={60} bgColor="#f3f5fe" fgColor="#292b31" className="size-full" />
               </div>
-              <span className="text-xs text-neutral-400">Friends scan this to join. Anyone with the link can edit — change roles below.</span>
+              <span className="text-xs text-neutral-400">Friends scan this to join the board.</span>
             </div>
           </>
         ) : (
           <span className="text-xs text-neutral-500">Sharing links need the web version of Idea Planner.</span>
         )}
+        <AccessSection />
         {inbox && (
           <div className="flex flex-col gap-1 rounded-[10px] bg-bg p-2.5">
             <span className="flex items-center gap-1.5 text-xs text-neutral-300">
@@ -342,26 +398,42 @@ function PeopleTab() {
         )}
       </div>
       <div className="flex flex-col gap-0.5">
-        <div className="kicker pb-1.5">People</div>
+        <div className="kicker pb-1.5">People · tap a face to say it's you</div>
         {people.map((p, i) => (
-          <div key={i} className="flex items-center gap-2.5 py-1.5">
-            <span
-              className={cx(
-                'grid size-8 flex-none place-items-center rounded-full text-[11px] font-medium',
-                i === ME ? 'bg-accent-700 text-accent-100' : i < splitN ? 'bg-neutral-700 text-neutral-100' : 'bg-neutral-800 text-neutral-300 opacity-80',
-              )}
-              style={i === ME ? { boxShadow: '0 0 0 2px var(--color-surface),0 0 0 3.5px var(--color-accent)' } : undefined}
-            >
-              {p.ini}
-            </span>
-            <div className="flex min-w-0 flex-1 flex-col leading-snug">
-              <span className="text-[13px]">
-                {p.full}
-                {i === ME && ' (you)'}
-              </span>
-              <span className="text-[11px] text-neutral-500">{i === ME ? 'You · owner' : i < splitN ? 'In the split' : 'Not in the split'}</span>
+          <div key={i} className="flex flex-col">
+            <div className="flex items-center gap-2.5 py-1.5">
+              <button
+                type="button"
+                title={i === me ? 'This is you' : `I'm ${p.name}`}
+                onClick={() => useBoard.getState().setMe(i)}
+                className={cx(
+                  'grid size-8 flex-none place-items-center rounded-full text-[11px] font-medium transition-[box-shadow,background] duration-200',
+                  i === me ? 'bg-accent-700 text-accent-100' : i < splitN ? 'bg-neutral-700 text-neutral-100 hover:bg-neutral-600' : 'bg-neutral-800 text-neutral-300 opacity-80',
+                )}
+                style={i === me ? { boxShadow: '0 0 0 2px var(--color-surface),0 0 0 3.5px var(--color-accent)' } : undefined}
+              >
+                {p.ini}
+              </button>
+              <div className="flex min-w-0 flex-1 flex-col leading-snug">
+                <span className="truncate text-[13px]">
+                  {p.full}
+                  {i === me && ' (you)'}
+                </span>
+                <span className="truncate text-[11px] text-neutral-500">
+                  {[i < splitN ? 'In the split' : 'Not in the split', p.paypal && 'PayPal', p.revolut && 'Revolut'].filter(Boolean).join(' · ')}
+                </span>
+              </div>
+              <button
+                type="button"
+                aria-label={`Edit ${p.name}`}
+                aria-expanded={editing === i}
+                onClick={() => setEditing(editing === i ? null : i)}
+                className="grid size-7 place-items-center rounded-md text-neutral-500 hover:bg-neutral-900 hover:text-text"
+              >
+                <PencilSimple />
+              </button>
             </div>
-            <Seg options={ROLES} value={p.role} onPick={(r) => setRole(i, r)} className="[&_.seg-opt]:px-2 [&_.seg-opt]:py-1 [&_.seg-opt]:text-[11px]" />
+            {editing === i && <PersonEditor i={i} />}
           </div>
         ))}
       </div>
@@ -369,10 +441,41 @@ function PeopleTab() {
   )
 }
 
+/** Name and payment handles for one person, so settling up can link straight to PayPal or Revolut. */
+function PersonEditor({ i }: { i: number }) {
+  const p = useBoard((s) => s.board!.people[i])
+  if (!p) return null
+  const set = (patch: Partial<typeof p>, mode?: ChangeMode) =>
+    useBoard.getState().change((b) => ({ ...b, people: b.people.map((x, j) => (j === i ? { ...x, ...patch } : x)) }), mode)
+  const row = (label: string, value: string, key: 'full' | 'email' | 'paypal' | 'revolut', placeholder: string) => (
+    <label className="flex items-center gap-2 text-xs">
+      <span className="w-[62px] flex-none text-neutral-500">{label}</span>
+      <Field
+        value={value}
+        placeholder={placeholder}
+        aria-label={label}
+        onValue={(v, m) => {
+          const clean = key === 'paypal' || key === 'revolut' ? v.replace(/^@|^https?:\/\/(www\.)?(paypal\.me|revolut\.me)\//i, '').trim() : v
+          set(key === 'full' ? { full: clean, name: clean.split(/\s+/)[0] ?? clean, ini: initials(clean) } : { [key]: clean }, m)
+        }}
+        className="min-w-0 flex-1 rounded-md bg-surface px-2 py-1"
+      />
+    </label>
+  )
+  return (
+    <div className="anim-drop mb-2 ml-[42px] flex flex-col gap-1.5 rounded-[10px] bg-bg p-2.5">
+      {row('Name', p.full, 'full', 'Full name')}
+      {row('Email', p.email, 'email', 'name@example.com')}
+      {row('PayPal', p.paypal, 'paypal', 'paypal.me username')}
+      {row('Revolut', p.revolut, 'revolut', 'revolut.me username')}
+    </div>
+  )
+}
+
 function ActivityTab() {
   const activity = useBoard((s) => s.board!.activity)
   const people = useBoard((s) => s.board!.people)
-  const ini = (who: string) => (who === 'You' ? people[ME]?.ini : people.find((p) => p.name === who)?.ini) ?? '?'
+  const ini = (who: string) => (who === 'You' ? people[useBoard.getState().me]?.ini : people.find((p) => p.name === who)?.ini) ?? '?'
 
   return (
     <div className="flex flex-col gap-0.5">

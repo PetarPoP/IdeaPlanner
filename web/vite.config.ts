@@ -15,6 +15,9 @@ export default defineConfig({
     strictPort: true,
     host: host || false,
     hmr: host ? { protocol: 'ws', host, port: 3001 } : undefined,
+    // `VITE_DEV_API=1 npm run dev` talks to `cargo run -p ideaplanner-server` on :3001
+    // (run it with PORT=3001 and PUBLIC_URL=http://localhost:3000).
+    proxy: process.env.VITE_DEV_API ? { '/api': { target: 'http://localhost:3001', ws: true } } : undefined,
   },
   envPrefix: ['VITE_', 'TAURI_ENV_'],
   plugins: [

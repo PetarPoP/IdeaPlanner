@@ -9,6 +9,7 @@ import { isMobileWidth, useBoard } from '~/store/board'
 import { DateField, Field, PlanPaidBar, cx } from '../ui'
 import { Popover } from './Popover'
 import { SyncBadge } from './SyncBadge'
+import { LiveAvatars } from './LiveAvatars'
 import { ViewSwitcher } from './ViewSwitcher'
 
 export function TopBar() {
@@ -53,6 +54,7 @@ export function TopBar() {
           </div>
         )}
         {mobile && <div className="flex-1" />}
+        <LiveAvatars />
         <BudgetSummaryButton wide={wide} />
         <button
           type="button"

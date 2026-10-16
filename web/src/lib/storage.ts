@@ -82,10 +82,60 @@ const tauriStore: Store = {
 
 const deviceStore = (): Store => (isTauri() ? tauriStore : browserStore)
 
-interface Api {
+export interface Api {
   base: string
   /** Domain of the board email addresses, when the server has an inbox. */
   inboxDomain: string | null
+  /** What the server offers beyond storing boards. */
+  live: boolean
+  google: boolean
+  ai: boolean
+}
+
+const offlineApi = (base: string): Api => ({ base, inboxDomain: null, live: false, google: false, ai: false })
+
+const TOKEN_KEY = 'ideaPlanner.session'
+
+/**
+ * Session token for builds that talk to the server from another origin
+ * (desktop/mobile, `VITE_API_URL`); the web build uses the HttpOnly cookie.
+ */
+export function sessionToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setSessionToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token)
+    else localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // Private mode: signed in for this page only (the cookie still works).
+  }
+}
+
+/** `fetch` against the server with the session attached. */
+export function authFetch(base: string, path: string, init: RequestInit = {}): Promise<Response> {
+  const token = sessionToken()
+  const headers = new Headers(init.headers)
+  if (token) headers.set('authorization', `Bearer ${token}`)
+  if (init.body && typeof init.body === 'string' && !headers.has('content-type')) headers.set('content-type', 'application/json')
+  return fetch(`${base}${path}`, { ...init, headers, credentials: base ? 'include' : 'same-origin' })
+}
+
+/** The server, or null when this build runs without one. */
+export const serverApi = (): Promise<Api | null> => resolveApi()
+
+export type Role = 'view' | 'edit' | 'admin'
+
+/** A board the server won't show: sign in first, or no access at all. */
+export class AccessError extends Error {
+  constructor(readonly kind: 'signin' | 'denied') {
+    super(kind)
+  }
 }
 
 let api: Promise<Api | null> | undefined
@@ -93,8 +143,12 @@ let api: Promise<Api | null> | undefined
 async function health(base: string): Promise<Api | null> {
   // Static hosts answer unknown paths with index.html, so check the body.
   const res = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(2500) })
-  const body = (res.ok ? await res.json().catch(() => null) : null) as { service?: string; inboxDomain?: string | null } | null
-  return body?.service === 'ideaplanner' ? { base, inboxDomain: body.inboxDomain ?? null } : null
+  const body = (res.ok ? await res.json().catch(() => null) : null) as
+    | { service?: string; inboxDomain?: string | null; live?: boolean; google?: boolean; ai?: boolean }
+    | null
+  return body?.service === 'ideaplanner'
+    ? { base, inboxDomain: body.inboxDomain ?? null, live: !!body.live, google: !!body.google, ai: !!body.ai }
+    : null
 }
 
 /** Finds the server once, or null when running without one. */
@@ -103,17 +157,18 @@ function resolveApi(): Promise<Api | null> {
     const configured = import.meta.env.VITE_API_URL as string | undefined
     if (configured) {
       const base = configured.replace(/\/$/, '')
-      return health(base).catch(() => ({ base, inboxDomain: null }))
+      return health(base).catch(() => offlineApi(base))
     }
     // Only a build served by the Rust server has an API next to it; the Vite
     // dev server and Tauri never do, so don't probe (a slow probe there is
     // aborted and the dev server logs it as an error).
-    if (isTauri() || import.meta.env.DEV) return null
+    // `VITE_DEV_API=1` proxies /api to a local server (see vite.config.ts).
+    if (isTauri() || (import.meta.env.DEV && !import.meta.env.VITE_DEV_API)) return null
     return health('').catch(() => {
       // Unreachable (offline start): assume the server is there so saves
       // queue up for it, and probe again next time.
       api = undefined
-      return { base: '', inboxDomain: null }
+      return offlineApi('')
     })
   })()
   return api
@@ -123,19 +178,21 @@ export async function inboxDomain(): Promise<string | null> {
   return (await resolveApi())?.inboxDomain ?? null
 }
 
-const remoteStore = (base: string): Pick<Store, 'load' | 'save'> => ({
-  async load(id) {
-    const res = await fetch(`${base}/api/boards/${encodeURIComponent(id)}`)
+const accessError = (status: number) => (status === 401 ? new AccessError('signin') : status === 403 ? new AccessError('denied') : null)
+
+const remoteStore = (base: string) => ({
+  async load(id: string): Promise<{ doc: string; role: Role } | null> {
+    const res = await authFetch(base, `/api/boards/${encodeURIComponent(id)}`)
     if (res.status === 404) return null
+    const denied = accessError(res.status)
+    if (denied) throw denied
     if (!res.ok) throw new Error(`load failed: ${res.status}`)
-    return res.text()
+    return { doc: await res.text(), role: (res.headers.get('x-board-role') as Role | null) ?? 'edit' }
   },
-  async save(id, doc) {
-    const res = await fetch(`${base}/api/boards/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: doc,
-    })
+  async save(id: string, doc: string) {
+    const res = await authFetch(base, `/api/boards/${encodeURIComponent(id)}`, { method: 'PUT', body: doc })
+    const denied = accessError(res.status)
+    if (denied) throw denied
     if (!res.ok) throw new Error(`save failed: ${res.status}`)
   },
 })
@@ -152,34 +209,49 @@ function parse(doc: string | null): Board | null {
 
 export type SyncState = 'local' | 'synced' | 'offline'
 
-export async function loadBoard(id: string): Promise<{ board: Board | null; sync: SyncState }> {
+export interface Loaded {
+  board: Board | null
+  sync: SyncState
+  /** What I may do on it; device-only boards are always mine to edit. */
+  role: Role
+  /** Set when the server holds the board but won't show it. */
+  blocked?: AccessError['kind']
+}
+
+export async function loadBoard(id: string): Promise<Loaded> {
   const server = await resolveApi()
   const device = parse(await deviceStore().load(id))
   if (server && device && isPending(id)) {
     // Edited offline last time: the device copy is newer, send it up.
-    return { board: device, sync: await pushRemote(server.base, id, JSON.stringify(device)) }
+    return { board: device, sync: await pushRemote(server.base, id, JSON.stringify(device)), role: 'edit' }
   }
   if (server) {
     try {
-      const remote = parse(await remoteStore(server.base).load(id))
-      if (remote) {
+      const got = await remoteStore(server.base).load(id)
+      const remote = parse(got?.doc ?? null)
+      if (remote && got) {
         // Opened from someone else's link: list it under "Shared with me".
         if (!device) setMeta(id, { shared: true })
-        return { board: remote, sync: 'synced' }
+        // Keep a copy for offline use.
+        if (got.role !== 'view') await deviceStore().save(id, got.doc).catch(() => undefined)
+        return { board: remote, sync: 'synced', role: got.role }
       }
-    } catch {
-      return { board: device, sync: 'offline' }
+    } catch (e) {
+      if (e instanceof AccessError) return { board: null, sync: 'synced', role: 'view', blocked: e.kind }
+      return { board: device, sync: 'offline', role: 'edit' }
     }
   }
-  return { board: device, sync: server ? 'synced' : 'local' }
+  return { board: device, sync: server ? 'synced' : 'local', role: 'edit' }
 }
 
-export async function saveBoard(board: Board): Promise<SyncState> {
+/** Saves on the device and, unless a live session already sent it, the server. */
+export async function saveBoard(board: Board, opts: { remote?: boolean } = {}): Promise<SyncState> {
   const doc = JSON.stringify(board)
   await deviceStore().save(board.id, doc)
   notifyBoards()
   const server = await resolveApi()
-  return server ? pushRemote(server.base, board.id, doc) : 'local'
+  if (!server) return 'local'
+  return opts.remote === false ? 'synced' : pushRemote(server.base, board.id, doc)
 }
 
 /** Saves to the server, remembering the board for a retry when that fails. */
@@ -188,7 +260,12 @@ async function pushRemote(base: string, id: string, doc: string): Promise<SyncSt
     await remoteStore(base).save(id, doc)
     setPending(id, false)
     return 'synced'
-  } catch {
+  } catch (e) {
+    // Refused (signed out, view only) is not a network problem to retry.
+    if (e instanceof AccessError) {
+      setPending(id, false)
+      return 'offline'
+    }
     setPending(id, true)
     return 'offline'
   }

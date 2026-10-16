@@ -1,7 +1,13 @@
+import { useEffect } from 'react'
 import { useBoardSession, useShortcuts, useWindowWidth } from '~/hooks/useBoardSession'
 import { useClipboard } from '~/hooks/useClipboard'
 import { useExternalLinks } from '~/hooks/useExternalLinks'
+import { useLiveBoard } from '~/hooks/useLiveBoard'
+import { useRates } from '~/hooks/useRates'
+import { useAccount } from '~/store/account'
 import { useBoard } from '~/store/board'
+import { AccessGate } from './account/AccessGate'
+import { SignInDialog } from './dialogs/SignInDialog'
 import { Canvas } from './board/Canvas'
 import { Sidebar } from './chrome/Sidebar'
 import { SelectionBar, Toolbar, ZoomBar } from './chrome/Toolbar'
@@ -22,7 +28,19 @@ export function BoardScreen({ boardId }: { boardId: string }) {
   useShortcuts()
   useClipboard()
   useExternalLinks()
+  useRates()
   const ready = useBoard((s) => s.board?.id === boardId)
+  const blocked = useBoard((s) => s.blocked)
+  useLiveBoard(boardId, ready)
+  useEffect(() => {
+    void useAccount.getState().load()
+    // Came back from an expired sign-in link: offer to sign in again.
+    const q = new URLSearchParams(location.search)
+    if (q.get('signin')) {
+      useBoard.getState().set({ dialog: 'signin' })
+      history.replaceState(null, '', location.pathname)
+    }
+  }, [])
   const dialog = useBoard((s) => s.dialog)
   const mode = useBoard((s) => s.mode)
 
@@ -54,8 +72,11 @@ export function BoardScreen({ boardId }: { boardId: string }) {
           {(dialog === 'templates' || dialog === 'newBoard') && <TemplatesDialog key={dialog} initial={dialog === 'newBoard' ? 'new' : 'replace'} />}
           {dialog === 'shortcuts' && <ShortcutsDialog />}
           {dialog === 'export' && <ExportDialog />}
+          {dialog === 'signin' && <SignInDialog />}
           <PrintView />
         </>
+      ) : blocked ? (
+        <AccessGate kind={blocked} />
       ) : (
         <div className="grid h-full place-items-center text-sm text-neutral-500">Loading board…</div>
       )}

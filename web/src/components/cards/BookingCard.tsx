@@ -76,7 +76,7 @@ export function BookingCard({ id }: { id: string }) {
           {n.paid ? `Paid by ${people[n.payer]?.name ?? '?'}` : 'Not paid'}
         </button>
         <div className="ml-auto">
-          <CostField cur={cur} value={n.cost} onValue={(cost, m) => set({ cost }, m)} width={60} />
+          <CostField cur={cur} ownCur={n.cur} onCur={(c) => set({ cur: c })} value={n.cost} onValue={(cost, m) => set({ cost }, m)} width={60} />
         </div>
       </div>
     </div>

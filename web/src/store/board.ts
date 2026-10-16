@@ -8,11 +8,13 @@ import { uid } from '~/lib/ids'
 import { drawNames } from '~/lib/santa'
 import type { TemplateKey } from '~/lib/templates'
 import { duplicateCard, fromTemplate, newCard } from '~/lib/templates'
-import type { SyncState } from '~/lib/storage'
+import type { Role, SyncState } from '~/lib/storage'
+import type { BoardPatch } from '~/lib/patch'
+import { applyPatch } from '~/lib/patch'
 
 export type Tool = 'select' | 'hand' | 'pen' | 'erase' | 'connect'
 export type Panel = 'budget' | 'tasks' | 'people' | 'activity'
-export type Dialog = 'budget' | 'templates' | 'newBoard' | 'shortcuts' | 'export'
+export type Dialog = 'budget' | 'templates' | 'newBoard' | 'shortcuts' | 'export' | 'signin'
 export type ViewMode = 'board' | 'list' | 'costs' | 'timeline'
 export type Selection = { nodes: string[] } | { edge: string } | { stroke: string } | null
 
@@ -43,6 +45,10 @@ export const MOBILE_MAX = 760
 interface State {
   board: Board | null
   sync: SyncState
+  /** What I may do on this board; `view` makes it read-only. */
+  role: Role
+  /** The server has this board but won't show it to me (yet). */
+  blocked: 'signin' | 'denied' | null
   past: Board[]
   future: Board[]
   /** Board as it was when the focused field got focus; pushed on its first edit. */
@@ -70,7 +76,9 @@ interface State {
 }
 
 interface Actions {
-  hydrate(board: Board, sync: SyncState): void
+  hydrate(board: Board, sync: SyncState, role?: Role): void
+  /** Someone else's live edit: applied to the board and its undo history, not undoable. */
+  applyRemote(p: BoardPatch): void
   setSync(sync: SyncState): void
   change(fn: (b: Board) => Board, mode?: ChangeMode): void
   updateNode(id: string, fn: (n: Node) => Node, mode?: ChangeMode): void
@@ -209,8 +217,8 @@ export function frameContents(board: Board, sizes: State['sizes'], ids: readonly
 
 export const useBoard = create<BoardStore>()((set, get) => {
   const commit = (next: Board, mode: ChangeMode) => {
-    const { board, past, editBase } = get()
-    if (!board || next === board) return
+    const { board, past, editBase, role } = get()
+    if (!board || next === board || role === 'view') return
     if (mode === 'step') {
       set({ board: next, past: [...past.slice(-HISTORY_LIMIT + 1), board], future: [], editBase: null })
     } else if (mode === 'typing' && editBase) {
@@ -228,6 +236,8 @@ export const useBoard = create<BoardStore>()((set, get) => {
   return {
     board: null,
     sync: 'local',
+    role: 'edit',
+    blocked: null,
     past: [],
     future: [],
     editBase: null,
@@ -247,10 +257,12 @@ export const useBoard = create<BoardStore>()((set, get) => {
     me: 0,
     thread: null,
 
-    hydrate: (board, sync) =>
+    hydrate: (board, sync, role = 'edit') =>
       set({
         board,
         sync,
+        role,
+        blocked: null,
         past: [],
         future: [],
         editBase: null,
@@ -264,6 +276,18 @@ export const useBoard = create<BoardStore>()((set, get) => {
       }),
     setSync: (sync) => set({ sync }),
 
+    applyRemote: (p) => {
+      const { board, past, future, editBase } = get()
+      if (!board) return
+      // Remote edits also land in history, so undo only takes back my own steps.
+      set({
+        board: applyPatch(board, p),
+        past: past.map((b) => applyPatch(b, p)),
+        future: future.map((b) => applyPatch(b, p)),
+        editBase: editBase && applyPatch(editBase, p),
+      })
+    },
+
     change: (fn, mode = 'step') => {
       const b = get().board
       if (b) commit(fn(b), mode)
@@ -275,9 +299,9 @@ export const useBoard = create<BoardStore>()((set, get) => {
     endEdit: () => set({ editBase: null }),
 
     undo: () => {
-      const { past, board, future } = get()
+      const { past, board, future, role } = get()
       const prev = past[past.length - 1]
-      if (!prev || !board) return
+      if (!prev || !board || role === 'view') return
       set({ board: prev, past: past.slice(0, -1), future: [board, ...future], sel: null, editBase: null })
     },
     redo: () => {

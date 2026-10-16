@@ -92,7 +92,7 @@ export const BOOKING_KINDS: Record<BookingKind, { icon: string; from: string; to
   Ticket: { icon: 'ticket', from: 'Event', to: 'Seat', start: 'Starts', end: 'Ends' },
 }
 
-export const CURRENCIES = ['€', '$', '£', 'kn'] as const
+export const CURRENCIES = ['€', '$', '£', 'din', 'CHF', 'kn'] as const
 
 /** The sample group the templates are written for. Person 0 is you. */
 export const SAMPLE_PEOPLE: Person[] = [

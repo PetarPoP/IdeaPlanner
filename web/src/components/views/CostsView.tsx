@@ -15,15 +15,17 @@ import { addRow, patchNode, patchRow, useBoard } from '~/store/board'
 import { Balances, SplitBox } from '../panel/SidePanel'
 import { AddRowButton, Bar, CostField, Field, Seg, cx } from '../ui'
 import { PageView } from './PageView'
+import { useRate } from '../cards/hooks'
 
 type Filter = 'all' | 'unpaid' | 'paid'
 
 /** Every cost on the board in one table, with the split and settle-up beside it. */
 export function CostsView() {
+  const rate = useRate()
   const board = useBoard((s) => s.board!)
   const [filter, setFilter] = useState<Filter>('all')
   const sum = summarize(board)
-  const max = Math.max(1, ...sum.costed.map(nodeTotal))
+  const max = Math.max(1, ...sum.costed.map((x) => nodeTotal(x, rate)))
 
   return (
     <PageView
@@ -74,9 +76,10 @@ export function CostsView() {
 }
 
 function CostCard({ n, max, filter }: { n: CostedNode; max: number; filter: Filter }) {
+  const rate = useRate()
   const { cur, splitN, people } = useBoard(useShallow((s) => ({ cur: s.board!.cur, splitN: s.board!.splitN, people: s.board!.people })))
-  const total = nodeTotal(n)
-  const paid = nodePaid(n)
+  const total = nodeTotal(n, rate)
+  const paid = nodePaid(n, rate)
   const budget = n.type === 'section' ? num(n.budget) : 0
   const m = (v: number) => money(cur, v)
   const show = (isPaid: boolean) => filter === 'all' || (filter === 'paid') === isPaid

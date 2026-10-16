@@ -1,6 +1,9 @@
 import { useEffect } from 'react'
 import { fromTemplate } from '~/lib/templates'
+import type { Loaded } from '~/lib/storage'
 import { loadBoard, rememberBoard, saveBoard, syncPending } from '~/lib/storage'
+import { useAccount } from '~/store/account'
+import { live } from './useLiveBoard'
 import { gesture } from '~/components/board/interaction'
 import { useBoard } from '~/store/board'
 
@@ -8,14 +11,21 @@ const SAVE_DELAY_MS = 400
 
 /** Loads the board (or seeds a new one), then saves every change, debounced. */
 export function useBoardSession(boardId: string) {
+  // Signing in or out can change what the server shows, so load again.
+  const userId = useAccount((s) => s.user?.id)
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const { board, sync } = await loadBoard(boardId).catch(() => ({ board: null, sync: 'local' as const }))
+      const loaded = await loadBoard(boardId).catch((): Loaded => ({ board: null, sync: 'local', role: 'edit' }))
       if (cancelled) return
+      const { board, sync, role, blocked } = loaded
+      if (blocked) {
+        useBoard.setState({ board: null, blocked })
+        return
+      }
       const isNew = !board
       const b = board ?? fromTemplate('roadtrip', { id: boardId })
-      useBoard.getState().hydrate({ ...b, id: boardId }, sync)
+      useBoard.getState().hydrate({ ...b, id: boardId }, sync, role)
       rememberBoard(boardId)
       if (isNew) void saveBoard(b).then((s) => useBoard.getState().setSync(s))
       // Let the cards render and measure before fitting them on screen.
@@ -24,7 +34,7 @@ export function useBoardSession(boardId: string) {
     return () => {
       cancelled = true
     }
-  }, [boardId])
+  }, [boardId, userId])
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined
@@ -35,7 +45,8 @@ export function useBoardSession(boardId: string) {
       if (!pending) return
       const b = pending
       pending = null
-      void saveBoard(b)
+      // A live session already sent the edit; keep the device copy current.
+      void saveBoard(b, { remote: !live.session?.open })
         .then((s) => useBoard.getState().setSync(s))
         .catch(() => useBoard.getState().setSync('offline'))
     }

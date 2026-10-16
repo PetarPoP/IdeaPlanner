@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowCounterClockwise, CaretDown, Keyboard, Lightbulb, MagnifyingGlass, Plus, Trash, X } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, CaretDown, Keyboard, Lightbulb, MagnifyingGlass, Plus, SignIn, SignOut, Trash, X } from '@phosphor-icons/react'
 import { useBoardList, useOpenBoard } from '~/hooks/useBoards'
 import { rangeLabel } from '~/lib/dates'
 import { NamedIcon } from '~/lib/icons'
 import type { BoardEntry } from '~/lib/storage'
 import { deleteBoard, restoreBoard, trashBoard } from '~/lib/storage'
+import { useAccount } from '~/store/account'
 import { isMobileWidth, useBoard } from '~/store/board'
 import { cx } from '../ui'
 
@@ -147,6 +148,7 @@ function SidebarBody() {
             )}
           </>
         )}
+        <AccountRow />
         <button
           type="button"
           onClick={() => {
@@ -161,6 +163,38 @@ function SidebarBody() {
         </button>
       </div>
     </>
+  )
+}
+
+/** Who I'm signed in as, or an invitation to sign in when the server has accounts. */
+function AccountRow() {
+  const { available, user, signOut } = useAccount()
+  const set = useBoard((s) => s.set)
+  if (!available) return null
+  if (!user)
+    return (
+      <button
+        type="button"
+        onClick={() => set({ sidebar: false, dialog: 'signin' })}
+        className="flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] text-accent-200 hover:bg-neutral-900"
+      >
+        <SignIn />
+        Sign in to sync your boards
+      </button>
+    )
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px]">
+      <span className="grid size-7 flex-none place-items-center rounded-full bg-accent-700 text-[11px] font-medium text-accent-100">
+        {(user.name || user.email)[0]!.toUpperCase()}
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col leading-tight">
+        <span className="truncate">{user.name || user.email}</span>
+        {user.name && <span className="truncate text-[11px] text-neutral-500">{user.email}</span>}
+      </span>
+      <button type="button" title="Sign out" aria-label="Sign out" onClick={() => void signOut()} className="grid size-7 place-items-center rounded-md text-neutral-500 hover:text-text">
+        <SignOut />
+      </button>
+    </div>
   )
 }
 

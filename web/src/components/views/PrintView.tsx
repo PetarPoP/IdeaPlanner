@@ -9,6 +9,7 @@ import type { PlanItem } from '~/lib/export'
 import { planByDay } from '~/lib/export'
 import { money, num } from '~/lib/money'
 import { useBoard } from '~/store/board'
+import { useRate } from '../cards/hooks'
 
 const usePrint = create<{ on: boolean }>(() => ({ on: false }))
 
@@ -41,6 +42,7 @@ export function PrintView() {
 }
 
 function Itinerary({ board }: { board: Board }) {
+  const rate = useRate()
   const { days, undated } = planByDay(board)
   const sum = summarize(board)
   const m = (v: number) => money(board.cur, v)
@@ -93,7 +95,7 @@ function Itinerary({ board }: { board: Board }) {
             {sum.costed.map((n) => (
               <tr key={n.id} className="border-b border-[#ececf0]">
                 <td className="py-1">{n.title || 'Untitled'}</td>
-                <td className="py-1 text-right tabular-nums">{m(nodeTotal(n))}</td>
+                <td className="py-1 text-right tabular-nums">{m(nodeTotal(n, rate))}</td>
               </tr>
             ))}
           </tbody>

@@ -6,6 +6,7 @@ import { uid } from '~/lib/ids'
 import { frameContents, nodeBox, selectedNodes, useBoard } from '~/store/board'
 import { EdgesLayer } from './EdgesLayer'
 import { NodeCard } from './NodeCard'
+import { RemoteCursors } from './RemoteCursors'
 import { StrokesLayer } from './StrokesLayer'
 import { gesture, isInteractive, useOverlay } from './interaction'
 
@@ -399,6 +400,7 @@ export function Canvas() {
           <NodeCard key={id} id={id} />
         ))}
         <StrokesLayer />
+        <RemoteCursors />
         {marquee && (
           <div
             className="pointer-events-none absolute z-40 rounded-[3px] border border-accent bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)]"

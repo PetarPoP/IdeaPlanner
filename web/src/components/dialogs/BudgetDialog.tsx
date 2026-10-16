@@ -9,6 +9,7 @@ import { patchNode, useBoard } from '~/store/board'
 import { PlanPaidBar, Seg } from '../ui'
 import { SplitStepper, useCapMessage } from '../panel/SidePanel'
 import { Modal } from './Modal'
+import { useRate } from '../cards/hooks'
 
 const CAP_STEPS = [
   ['−500', -500],
@@ -18,6 +19,7 @@ const CAP_STEPS = [
 ] as const
 
 export function BudgetDialog() {
+  const rate = useRate()
   const { board, sum, m, msg, planPct, paidPct, over } = useCapMessage()
   const { change, set, log } = useBoard.getState()
   const close = () => set({ dialog: null })
@@ -106,7 +108,7 @@ export function BudgetDialog() {
             <div key={n.id} className="flex min-h-[38px] items-center gap-2 text-[13px]">
               <NamedIcon name={n.icon} className="text-accent" />
               <span className="min-w-0 flex-1 truncate">{n.title || 'Untitled'}</span>
-              <span className="text-neutral-400">{m(nodeTotal(n))}</span>
+              <span className="text-neutral-400">{m(nodeTotal(n, rate))}</span>
               <span className="text-neutral-600">of</span>
               <label className="flex items-center gap-1 rounded-lg bg-bg px-2 py-1 shadow-inset">
                 <span className="text-neutral-500">{board.cur}</span>
