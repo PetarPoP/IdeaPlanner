@@ -3,6 +3,7 @@ import { gesture } from '~/components/board/interaction'
 import { looksLikeEmail, parseEmail } from '~/lib/email'
 import { imageToDataUrl } from '~/lib/image'
 import type { CardClip } from '~/store/board'
+import { toast } from '~/store/toast'
 import { useBoard } from '~/store/board'
 
 const MIME = 'text/plain'
@@ -48,6 +49,7 @@ export async function copyToClipboard(cut = false) {
     // Kept in memory for pasting inside the app.
   }
   if (cut) cutSelection()
+  else toast(clip.nodes.length === 1 ? 'Copied 1 card' : `Copied ${clip.nodes.length} cards`)
 }
 
 /** Pastes text from outside the app as the card that fits it best. */
@@ -84,6 +86,7 @@ export function useClipboard() {
       lastClip = clip
       e.clipboardData?.setData(MIME, JSON.stringify(clip))
       if (cut) cutSelection()
+      else toast(clip.nodes.length === 1 ? 'Copied 1 card' : `Copied ${clip.nodes.length} cards`)
     }
     const copy = (e: ClipboardEvent) => onCopy(e, false)
     const cut = (e: ClipboardEvent) => onCopy(e, true)

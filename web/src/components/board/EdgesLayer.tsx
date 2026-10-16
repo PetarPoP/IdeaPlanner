@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { edgePath } from '~/lib/geometry'
 import { nodeBox, useBoard } from '~/store/board'
 import { useOverlay } from './interaction'
@@ -13,6 +13,16 @@ export function EdgesLayer() {
 
   const byId = useMemo(() => new Map((nodes ?? []).map((n) => [n.id, n])), [nodes])
   const select = useBoard.getState().select
+
+  // Connections made after the board opened draw themselves in.
+  const firstSeen = useRef<Map<string, number> | null>(null)
+  const now = Date.now()
+  if (!firstSeen.current) firstSeen.current = new Map((edges ?? []).map((e) => [e.id, 0]))
+  const fresh = (id: string) => {
+    const seen = firstSeen.current!
+    if (!seen.has(id)) seen.set(id, now)
+    return now - seen.get(id)! < 450
+  }
 
   const tempPath = (() => {
     const from = temp && byId.get(temp.from)
@@ -37,6 +47,7 @@ export function EdgesLayer() {
         if (!a || !b) return null
         const d = edgePath(nodeBox(a, sizes), nodeBox(b, sizes))
         const on = sel != null && 'edge' in sel && sel.edge === e.id
+        const drawIn = !on && fresh(e.id)
         return (
           <g key={e.id}>
             <path
@@ -59,7 +70,8 @@ export function EdgesLayer() {
               strokeWidth={on ? 2.5 : 1.75}
               markerEnd="url(#ip-arrow)"
               strokeDasharray={on ? '6 4' : undefined}
-              className={on ? 'animate-flow' : undefined}
+              pathLength={drawIn ? 1 : undefined}
+              className={on ? 'animate-flow' : drawIn ? 'anim-draw' : 'transition-[stroke,stroke-width] duration-200'}
             />
           </g>
         )

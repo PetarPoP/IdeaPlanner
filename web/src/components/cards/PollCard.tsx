@@ -1,13 +1,13 @@
 import type { ChangeMode } from '~/store/board'
 import { Check, Plus } from '@phosphor-icons/react'
 import type { PollOption } from '~/lib/model.gen'
-import { ME } from '~/lib/catalog'
 import { newItem } from '~/lib/templates'
 import { addRow, patchRow, useBoard, useNode } from '~/store/board'
 import { Field, cx } from '../ui'
 
 export function PollCard({ id }: { id: string }) {
   const n = useNode(id, 'poll')
+  const me = useBoard((s) => s.me)
   if (!n) return null
   const total = n.options.reduce((a, o) => a + o.votes.length, 0)
   const max = Math.max(1, ...n.options.map((o) => o.votes.length))
@@ -16,7 +16,7 @@ export function PollCard({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-1.5 px-3 pb-3">
       {n.options.map((o) => {
-        const on = o.votes.includes(ME)
+        const on = o.votes.includes(me)
         const lead = o.votes.length === max && total > 0
         return (
           <div key={o.id} className="relative flex min-h-9 items-center gap-2 overflow-hidden rounded-lg bg-bg px-2.5">
@@ -29,7 +29,7 @@ export function PollCard({ id }: { id: string }) {
               aria-pressed={on}
               aria-label={`Vote for ${o.text}`}
               onClick={() => {
-                row(o, { votes: on ? o.votes.filter((v) => v !== ME) : [...o.votes, ME] })
+                row(o, { votes: on ? o.votes.filter((v) => v !== me) : [...o.votes, me] })
                 if (!on) useBoard.getState().log(`voted for ${o.text}`)
               }}
               className={cx(

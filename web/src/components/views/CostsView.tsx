@@ -16,6 +16,7 @@ import { Balances, SplitBox } from '../panel/SidePanel'
 import { AddRowButton, Bar, CostField, Field, Seg, cx } from '../ui'
 import { PageView } from './PageView'
 import { useRate } from '../cards/hooks'
+import { Tween } from '../Tween'
 
 type Filter = 'all' | 'unpaid' | 'paid'
 
@@ -43,7 +44,7 @@ export function CostsView() {
       }
     >
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
-        <div className="flex flex-col gap-3">
+        <div className="stagger flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[15px] font-medium">Costs by card</span>
             <Seg
@@ -85,7 +86,7 @@ function CostCard({ n, max, filter }: { n: CostedNode; max: number; filter: Filt
   const show = (isPaid: boolean) => filter === 'all' || (filter === 'paid') === isPaid
 
   return (
-    <div className="anim-card flex flex-col gap-2 rounded-xl bg-surface p-3.5 shadow-sm">
+    <div className="anim-card lift flex flex-col gap-2 rounded-xl bg-surface p-3.5 shadow-sm hover:shadow-md">
       <div className="flex items-center gap-2">
         <NamedIcon name={n.icon} className="text-[17px] text-accent" />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{n.title || 'Untitled'}</span>
@@ -101,7 +102,7 @@ function CostCard({ n, max, filter }: { n: CostedNode; max: number; filter: Filt
           <Crosshair />
         </button>
         <span className="ml-auto flex flex-none items-baseline gap-2">
-          <span className="text-lg font-medium tracking-[-0.02em]">{m(total)}</span>
+          <span className="text-lg font-medium tracking-[-0.02em]"><Tween value={total} format={m} /></span>
           <span className="text-xs text-accent-300">{m(total / Math.max(1, splitN))}/pp</span>
         </span>
       </div>
@@ -203,7 +204,7 @@ function Line({
           onClick={onPaid}
           className={cx('grid size-[22px] flex-none place-items-center text-[17px]', paid ? 'text-accent' : 'text-neutral-600')}
         >
-          {paid ? <CheckCircle weight="fill" /> : <Circle />}
+          {paid ? <CheckCircle weight="fill" className="anim-check" /> : <Circle />}
         </button>
       ) : (
         <span className="size-[22px] flex-none" />

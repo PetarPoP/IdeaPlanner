@@ -147,7 +147,7 @@ export function Bar({ pct, className, fill = 'bg-accent', glow }: { pct: number;
   return (
     <div className={cx('overflow-hidden rounded-full bg-neutral-900', className)}>
       <div
-        className={cx('h-full', fill)}
+        className={cx('meter h-full', fill)}
         style={{ width: `${Math.max(0, Math.min(100, pct))}%`, boxShadow: glow ? '0 0 8px var(--color-accent)' : undefined }}
       />
     </div>
@@ -175,9 +175,9 @@ export function PlanPaidBar({
       : 'var(--color-accent-800)'
   return (
     <div className={cx('relative overflow-hidden rounded-full bg-neutral-900', className)}>
-      <div className="absolute inset-y-0 left-0" style={{ width: `${Math.min(100, planPct)}%`, background: plan }} />
+      <div className="meter absolute inset-y-0 left-0" style={{ width: `${Math.min(100, planPct)}%`, background: plan }} />
       <div
-        className="absolute inset-y-0 left-0 rounded-full bg-accent"
+        className="meter absolute inset-y-0 left-0 rounded-full bg-accent"
         style={{ width: `${Math.min(100, paidPct)}%`, boxShadow: '0 0 10px var(--color-accent)' }}
       />
     </div>

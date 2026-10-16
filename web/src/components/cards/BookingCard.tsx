@@ -72,7 +72,7 @@ export function BookingCard({ id }: { id: string }) {
           onClick={() => set({ paid: !n.paid })}
           className={cx('flex items-center gap-1.5 rounded-lg px-2.5 py-[5px] text-xs', n.paid ? 'bg-accent-800 text-accent-100' : 'bg-bg text-neutral-400')}
         >
-          {n.paid ? <CheckCircle weight="fill" /> : <Circle />}
+          {n.paid ? <CheckCircle weight="fill" className="anim-check" /> : <Circle />}
           {n.paid ? `Paid by ${people[n.payer]?.name ?? '?'}` : 'Not paid'}
         </button>
         <div className="ml-auto">

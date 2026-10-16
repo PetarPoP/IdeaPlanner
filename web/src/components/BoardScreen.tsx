@@ -7,10 +7,12 @@ import { useRates } from '~/hooks/useRates'
 import { useAccount } from '~/store/account'
 import { useBoard } from '~/store/board'
 import { AccessGate } from './account/AccessGate'
+import { Leaving, usePresence } from './presence'
 import { SignInDialog } from './dialogs/SignInDialog'
 import { Canvas } from './board/Canvas'
 import { Sidebar } from './chrome/Sidebar'
 import { SelectionBar, Toolbar, ZoomBar } from './chrome/Toolbar'
+import { Toaster } from './chrome/Toaster'
 import { TopBar } from './chrome/TopBar'
 import { BudgetDialog } from './dialogs/BudgetDialog'
 import { ExportDialog } from './dialogs/ExportDialog'
@@ -41,7 +43,7 @@ export function BoardScreen({ boardId }: { boardId: string }) {
       history.replaceState(null, '', location.pathname)
     }
   }, [])
-  const dialog = useBoard((s) => s.dialog)
+  const { shown: dialog, leaving } = usePresence(useBoard((s) => s.dialog))
   const mode = useBoard((s) => s.mode)
 
   return (
@@ -52,12 +54,12 @@ export function BoardScreen({ boardId }: { boardId: string }) {
       {ready ? (
         <>
           {mode === 'board' ? (
-            <>
+            <div key="board" className="anim-fade absolute inset-0">
               <Canvas />
               <SelectionBar />
               <Toolbar />
               <ZoomBar />
-            </>
+            </div>
           ) : mode === 'list' ? (
             <ListView />
           ) : mode === 'costs' ? (
@@ -68,11 +70,14 @@ export function BoardScreen({ boardId }: { boardId: string }) {
           <TopBar />
           <SidePanel />
           <Sidebar />
+          <Leaving.Provider value={leaving}>
           {dialog === 'budget' && <BudgetDialog />}
           {(dialog === 'templates' || dialog === 'newBoard') && <TemplatesDialog key={dialog} initial={dialog === 'newBoard' ? 'new' : 'replace'} />}
           {dialog === 'shortcuts' && <ShortcutsDialog />}
           {dialog === 'export' && <ExportDialog />}
           {dialog === 'signin' && <SignInDialog />}
+          </Leaving.Provider>
+          <Toaster />
           <PrintView />
         </>
       ) : blocked ? (

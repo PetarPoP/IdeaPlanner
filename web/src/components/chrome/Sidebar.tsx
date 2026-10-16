@@ -8,24 +8,26 @@ import type { BoardEntry } from '~/lib/storage'
 import { deleteBoard, restoreBoard, trashBoard } from '~/lib/storage'
 import { useAccount } from '~/store/account'
 import { isMobileWidth, useBoard } from '~/store/board'
+import { usePresence } from '../presence'
 import { cx } from '../ui'
 
 /** All boards on this device: mine, shared with me, and the trash. Opened from the top-left button. */
 export function Sidebar() {
-  const open = useBoard((s) => s.sidebar)
+  const { shown, leaving } = usePresence(useBoard((s) => s.sidebar))
   const mobile = useBoard((s) => isMobileWidth(s.vw))
   const set = useBoard((s) => s.set)
-  if (!open) return null
+  if (!shown) return null
   return (
     <>
       <div
-        className="anim-fade absolute inset-0 z-[54] bg-[color-mix(in_srgb,var(--color-bg)_45%,transparent)]"
+        className={cx(leaving ? 'anim-fade-out pointer-events-none' : 'anim-fade', 'absolute inset-0 z-[54] bg-[color-mix(in_srgb,var(--color-bg)_45%,transparent)]')}
         onPointerDown={() => set({ sidebar: false })}
       />
       <aside
         aria-label="Your boards"
         className={cx(
-          'anim-slide-left absolute top-0 bottom-0 left-0 z-[55] flex flex-col gap-4 bg-[color-mix(in_srgb,var(--color-surface)_97%,transparent)] px-3.5 py-4 shadow-lg backdrop-blur-md',
+          leaving ? 'anim-slide-left-out pointer-events-none' : 'anim-slide-left',
+          'absolute top-0 bottom-0 left-0 z-[55] flex flex-col gap-4 bg-[color-mix(in_srgb,var(--color-surface)_97%,transparent)] px-3.5 py-4 shadow-lg backdrop-blur-md',
           mobile ? 'w-[86%] max-w-[320px]' : 'w-[290px]',
         )}
       >
@@ -94,15 +96,15 @@ function SidebarBody() {
       <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-1">
         <Group label="My boards">
           {boards == null && <span className="px-2.5 text-xs text-neutral-600">Loading…</span>}
-          {mine.map((b) => (
-            <Row key={b.id} b={b} on={b.id === current} onOpen={() => go(b.id)} actions={<RowAction label="Move to trash" onClick={() => remove(b.id)} icon={<Trash />} />} />
+          {mine.map((b, i) => (
+            <Row key={b.id} i={i} b={b} on={b.id === current} onOpen={() => go(b.id)} actions={<RowAction label="Move to trash" onClick={() => remove(b.id)} icon={<Trash />} />} />
           ))}
           {boards != null && !mine.length && <span className="px-2.5 text-xs text-neutral-600">{q ? 'No matches.' : 'No boards yet.'}</span>}
         </Group>
         {shared.length > 0 && (
           <Group label="Shared with me">
-            {shared.map((b) => (
-              <Row key={b.id} b={b} on={b.id === current} onOpen={() => go(b.id)} actions={<RowAction label="Remove from this device" onClick={() => remove(b.id)} icon={<Trash />} />} />
+            {shared.map((b, i) => (
+              <Row key={b.id} i={mine.length + i} b={b} on={b.id === current} onOpen={() => go(b.id)} actions={<RowAction label="Remove from this device" onClick={() => remove(b.id)} icon={<Trash />} />} />
             ))}
           </Group>
         )}
@@ -207,15 +209,16 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function Row({ b, on, dim, onOpen, actions }: { b: BoardEntry; on: boolean; dim?: boolean; onOpen?: () => void; actions: ReactNode }) {
+function Row({ b, on, dim, onOpen, actions, i = 0 }: { b: BoardEntry; on: boolean; dim?: boolean; onOpen?: () => void; actions: ReactNode; i?: number }) {
   const when = rangeLabel(b.date, b.endDate)
   return (
     <div
       className={cx(
-        'group flex items-center gap-2.5 rounded-lg py-1.5 pr-1 pl-2.5 text-[13px] transition-colors',
+        'anim-slide-right group flex items-center gap-2.5 rounded-lg py-1.5 pr-1 pl-2.5 text-[13px] transition-colors',
         on ? 'bg-accent-900 text-accent-200 shadow-[inset_2px_0_0_var(--color-accent)]' : 'text-neutral-300 hover:bg-neutral-900',
         dim && 'opacity-70',
       )}
+      style={{ animationDelay: `${60 + Math.min(i, 10) * 22}ms` }}
     >
       <button type="button" onClick={onOpen} disabled={!onOpen} className="flex min-w-0 flex-1 items-center gap-2.5 text-left disabled:cursor-default">
         <NamedIcon name={b.icon} className="flex-none text-base" />

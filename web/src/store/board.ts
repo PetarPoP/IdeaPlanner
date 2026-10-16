@@ -11,6 +11,7 @@ import { duplicateCard, fromTemplate, newCard } from '~/lib/templates'
 import type { Role, SyncState } from '~/lib/storage'
 import type { BoardPatch } from '~/lib/patch'
 import { applyPatch } from '~/lib/patch'
+import { toast } from './toast'
 
 export type Tool = 'select' | 'hand' | 'pen' | 'erase' | 'connect'
 export type Panel = 'budget' | 'tasks' | 'people' | 'activity'
@@ -69,6 +70,8 @@ interface State {
   addOpen: boolean
   sidebar: boolean
   mode: ViewMode
+  /** When the view last jumped on purpose (fit, zoom buttons, jump to a card), so the canvas glides there. */
+  glide: number
   /** Who "I" am on this board: an index into `board.people` (authors comments). */
   me: number
   /** Card whose comment thread is open. */
@@ -254,6 +257,7 @@ export const useBoard = create<BoardStore>()((set, get) => {
     addOpen: false,
     sidebar: false,
     mode: readMode(),
+    glide: 0,
     me: 0,
     thread: null,
 
@@ -341,9 +345,9 @@ export const useBoard = create<BoardStore>()((set, get) => {
         strokes: b.strokes.filter((k) => k.id !== strokeId),
       }))
       set({ sel: null })
-      get().log(
-        nodeIds.size > 1 ? `deleted ${nodeIds.size} cards` : `deleted a ${nodeIds.size ? 'card' : edgeId ? 'connection' : 'drawing'}`,
-      )
+      const what = nodeIds.size > 1 ? `${nodeIds.size} cards` : `a ${nodeIds.size ? 'card' : edgeId ? 'connection' : 'drawing'}`
+      get().log(`deleted ${what}`)
+      toast(`Deleted ${what}`, { label: 'Undo', run: () => get().undo() })
     },
 
     duplicateSelection: () => {
@@ -487,7 +491,7 @@ export const useBoard = create<BoardStore>()((set, get) => {
 
     zoomBy: (factor) => {
       const { view, viewport } = get()
-      set({ view: zoomAt(view, clampZoom(view.z * factor), viewport.w / 2, viewport.h / 2) })
+      set({ view: zoomAt(view, clampZoom(view.z * factor), viewport.w / 2, viewport.h / 2), glide: Date.now() })
     },
 
     fit: () => {
@@ -500,7 +504,7 @@ export const useBoard = create<BoardStore>()((set, get) => {
         viewport.h,
         mob ? { side: 16, top: 120, bottom: 90 } : { side: 40, top: 80, bottom: 100 },
       )
-      if (v) set({ view: v })
+      if (v) set({ view: v, glide: Date.now() })
     },
 
     focusNode: (id) => {
@@ -516,6 +520,7 @@ export const useBoard = create<BoardStore>()((set, get) => {
         sel: { nodes: [id] },
         view: { z, x: cw / 2 - (b.x + b.w / 2) * z, y: (mob ? viewport.h * 0.3 : viewport.h / 2) - (b.y + b.h / 2) * z },
         panel: mob ? null : panel,
+        glide: Date.now(),
       })
     },
 

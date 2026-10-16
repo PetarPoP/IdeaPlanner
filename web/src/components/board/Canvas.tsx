@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { clampZoom, containsBox, simplify, snap, zoomAt } from '~/lib/geometry'
@@ -9,6 +9,7 @@ import { NodeCard } from './NodeCard'
 import { RemoteCursors } from './RemoteCursors'
 import { StrokesLayer } from './StrokesLayer'
 import { gesture, isInteractive, useOverlay } from './interaction'
+import { cx } from '../ui'
 
 const ERASER_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="rgba(145,132,217,.18)" stroke="#d2cefd" stroke-width="1.5"/></svg>',
@@ -34,6 +35,9 @@ export function Canvas() {
   const view = useBoard((s) => s.view)
   const tool = useBoard((s) => s.tool)
   const marquee = useOverlay((s) => s.marquee)
+  const world = useRef<HTMLDivElement>(null)
+  const gliding = useGlide()
+  useLeavingCards(world, ids)
 
   const toWorld = useCallback((cx: number, cy: number) => {
     const r = ref.current!.getBoundingClientRect()
@@ -386,7 +390,7 @@ export function Canvas() {
       onAuxClick={(e) => e.button === 1 && e.preventDefault()}
       onDoubleClick={onBackgroundDoubleClick}
       data-canvas
-      className="absolute inset-0 touch-none select-none"
+      className={cx('absolute inset-0 touch-none select-none', gliding && 'transition-[background-position,background-size] duration-300 ease-out')}
       style={{
         cursor: CURSOR[tool],
         backgroundImage: 'radial-gradient(circle,#3f424d 1px,transparent 1.3px)',
@@ -394,7 +398,11 @@ export function Canvas() {
         backgroundPosition: `${view.x}px ${view.y}px`,
       }}
     >
-      <div className="absolute top-0 left-0 origin-top-left" style={{ transform: `translate(${view.x}px,${view.y}px) scale(${view.z})` }}>
+      <div
+        ref={world}
+        className={cx('absolute top-0 left-0 origin-top-left', gliding && 'view-glide')}
+        style={{ transform: `translate(${view.x}px,${view.y}px) scale(${view.z})` }}
+      >
         <EdgesLayer />
         {ids.map((id) => (
           <NodeCard key={id} id={id} />
@@ -412,4 +420,48 @@ export function Canvas() {
       {drawing && <div className="absolute inset-0 z-30" />}
     </div>
   )
+}
+
+/** True for a moment after the view jumped on purpose, so the board glides instead of cutting. */
+function useGlide(): boolean {
+  const glide = useBoard((s) => s.glide)
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    if (!glide) return
+    setOn(true)
+    const t = setTimeout(() => setOn(false), 340)
+    return () => clearTimeout(t)
+  }, [glide])
+  return on
+}
+
+/**
+ * Deleted cards fade out instead of vanishing: React drops their element, and
+ * this puts the detached element back for its leaving animation.
+ */
+function useLeavingCards(world: React.RefObject<HTMLDivElement | null>, ids: string[]) {
+  const els = useRef(new Map<string, HTMLElement>())
+  const boardId = useBoard((s) => s.board?.id)
+  const lastBoard = useRef(boardId)
+  useLayoutEffect(() => {
+    const root = world.current
+    if (!root) return
+    const sameBoard = lastBoard.current === boardId
+    lastBoard.current = boardId
+    const live = new Set(ids)
+    for (const [id, el] of els.current) {
+      if (live.has(id)) continue
+      els.current.delete(id)
+      if (!sameBoard || el.isConnected) continue
+      el.removeAttribute('data-node-id')
+      el.querySelectorAll('[data-port],[data-resize]').forEach((x) => x.removeAttribute('data-port'))
+      el.classList.remove('anim-card', 'anim-fade')
+      el.classList.add('anim-card-out')
+      root.appendChild(el)
+      const done = () => el.remove()
+      el.addEventListener('animationend', done, { once: true })
+      setTimeout(done, 400)
+    }
+    root.querySelectorAll<HTMLElement>(':scope > [data-node-id]').forEach((el) => els.current.set(el.dataset.nodeId!, el))
+  }, [ids, boardId, world])
 }

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bell, BellRinging } from '@phosphor-icons/react'
-import { dayLabel, daysBetween, toIso } from '~/lib/dates'
+import { addDays, countdown, dayLabel, daysBetween, toIso } from '~/lib/dates'
 import { NamedIcon } from '~/lib/icons'
 import type { Reminder } from '~/lib/reminders'
-import { msUntil, soon } from '~/lib/reminders'
+import { msUntil, soon, upcoming } from '~/lib/reminders'
 import { useBoard } from '~/store/board'
 import { cx } from '../ui'
 import { Popover } from './Popover'
@@ -16,13 +16,21 @@ const canNotify = () => typeof Notification !== 'undefined'
 
 function relative(date: string): string {
   const d = daysBetween(toIso(new Date()), date)
-  return d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : dayLabel(date)
+  if (d === 0) return 'Today'
+  if (d === 1) return 'Tomorrow'
+  return d != null && d > 14 ? `${dayLabel(date)} · ${countdown(date, '')}` : dayLabel(date)
 }
 
 /** Upcoming departures, check-ins, day plans and payments, with an optional heads-up a day before. */
 export function ReminderBell({ className }: { className?: string }) {
   const board = useBoard((s) => s.board!)
   const items = useMemo(() => soon(board), [board])
+  // With nothing close, still show what's next.
+  const later = useMemo(() => {
+    if (items.length) return []
+    const today = toIso(new Date())
+    return upcoming(board, today, addDays(today, 730)).slice(0, 3)
+  }, [board, items.length])
   const [open, setOpen] = useState(false)
   const [perm, setPerm] = useState(() => (canNotify() ? Notification.permission : 'denied'))
   const anchor = useRef<HTMLButtonElement>(null)
@@ -49,7 +57,17 @@ export function ReminderBell({ className }: { className?: string }) {
       </button>
       <Popover open={open} onClose={() => setOpen(false)} anchor={anchor} className="top-11 right-0 flex w-[300px] flex-col gap-2">
         <div className="kicker">Next two weeks</div>
-        {!items.length && <p className="text-xs text-neutral-500">Nothing dated yet. Bookings, day plans and payments with a due date show up here.</p>}
+        {!items.length && !later.length && <p className="text-xs text-neutral-500">Nothing dated yet. Bookings, day plans and payments with a due date show up here.</p>}
+        {!items.length && later.length > 0 && (
+          <>
+            <p className="text-xs text-neutral-500">Nothing in the next two weeks. Next up:</p>
+            <div className="-mx-1 flex flex-col">
+              {later.map((r, i) => (
+                <ReminderRow key={r.key} r={r} delay={i} onPick={() => setOpen(false)} />
+              ))}
+            </div>
+          </>
+        )}
         <div className="-mx-1 flex max-h-[320px] flex-col overflow-auto">
           {items.map((r, i) => (
             <ReminderRow key={r.key} r={r} delay={i} onPick={() => setOpen(false)} />

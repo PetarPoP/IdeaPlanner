@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
+import { usePresence } from '../presence'
 import { cx } from '../ui'
 
 /**
@@ -35,9 +36,10 @@ export function Popover({
       window.removeEventListener('keydown', onKey)
     }
   }, [open, onClose, anchor])
-  if (!open) return null
+  const { shown, leaving } = usePresence(open, 120)
+  if (!shown) return null
   return (
-    <div ref={ref} className={cx('glass anim-pop absolute z-50 rounded-xl p-3', className)}>
+    <div ref={ref} className={cx('glass absolute z-50 rounded-xl p-3', leaving ? 'anim-fade-out pointer-events-none' : 'anim-pop', className)}>
       {children}
     </div>
   )

@@ -7,6 +7,7 @@ import { NamedIcon } from '~/lib/icons'
 import { money } from '~/lib/money'
 import { useBoard } from '~/store/board'
 import { Field, PlanPaidBar, cx } from '../ui'
+import { Tween } from '../Tween'
 
 /** The scrolling page behind the List, Costs and Timeline views: board header, totals, then the view. */
 export function PageView({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
@@ -110,19 +111,19 @@ export function Totals() {
       </div>
       <div className={cx(cell, 'shadow-[inset_1px_0_0_#3f424d] max-md:shadow-[inset_0_1px_0_#3f424d]')}>
         <span className="kicker text-[11px]">Estimated total</span>
-        <span className="text-[22px] font-medium tracking-[-0.02em] md:text-[26px]">{m(sum.total)}</span>
+        <span className="text-[22px] font-medium tracking-[-0.02em] md:text-[26px]"><Tween value={sum.total} format={m} /></span>
         <span className="text-xs text-neutral-500">
           {sum.costed.length} cards · {items} costed items
         </span>
       </div>
       <div className={cx(cell, 'shadow-[inset_1px_0_0_#3f424d] max-md:shadow-[inset_1px_1px_0_#3f424d]')}>
         <span className="kicker text-[11px]">Spent</span>
-        <span className="text-[22px] font-medium tracking-[-0.02em] md:text-[26px]">{m(sum.paid)}</span>
+        <span className="text-[22px] font-medium tracking-[-0.02em] md:text-[26px]"><Tween value={sum.paid} format={m} /></span>
         <span className="text-xs text-neutral-500">{m(Math.max(0, sum.total - sum.paid))} still to pay</span>
       </div>
       <div className={cx(cell, 'col-span-2 shadow-[inset_1px_0_0_#3f424d] max-md:shadow-[inset_0_1px_0_#3f424d] md:col-span-1')}>
         <span className="kicker text-[11px] text-accent">Per person</span>
-        <span className="text-[22px] font-medium tracking-[-0.02em] text-accent-200 md:text-[26px]">{m(sum.perPerson)}</span>
+        <span className="text-[22px] font-medium tracking-[-0.02em] text-accent-200 md:text-[26px]"><Tween value={sum.perPerson} format={m} /></span>
         <span className="text-xs text-neutral-500">split evenly · {board.splitN} people</span>
       </div>
     </div>

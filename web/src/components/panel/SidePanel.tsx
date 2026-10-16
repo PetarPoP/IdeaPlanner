@@ -16,6 +16,8 @@ import { useInboxAddress } from '~/hooks/useInbox'
 import type { ChangeMode, Panel } from '~/store/board'
 import { isMobileWidth, patchRow, useBoard } from '~/store/board'
 import { AccessSection } from '../account/AccessSection'
+import { usePresence } from '../presence'
+import { toast } from '~/store/toast'
 import { Bar, Field, PlanPaidBar, Stepper, cx } from '../ui'
 import { useRate } from '../cards/hooks'
 
@@ -27,7 +29,7 @@ const TABS: ReadonlyArray<{ key: Panel; icon: Icon; label: string }> = [
 ]
 
 export function SidePanel() {
-  const panel = useBoard((s) => s.panel)
+  const { shown: panel, leaving } = usePresence(useBoard((s) => s.panel))
   const mobile = useBoard((s) => isMobileWidth(s.vw))
   const set = useBoard((s) => s.set)
   if (!panel) return null
@@ -37,8 +39,9 @@ export function SidePanel() {
       className={cx(
         'absolute z-50 flex flex-col',
         mobile
-          ? 'anim-sheet inset-x-0 bottom-0 h-[72%] rounded-t-[18px] bg-surface shadow-lg'
-          : 'anim-slide-right top-[70px] right-3 bottom-3 z-[44] w-[380px] rounded-[14px] bg-[color-mix(in_srgb,var(--color-surface)_96%,transparent)] shadow-md backdrop-blur-md',
+          ? cx(leaving ? 'anim-sheet-out' : 'anim-sheet', 'inset-x-0 bottom-0 h-[72%] rounded-t-[18px] bg-surface shadow-lg')
+          : cx(leaving ? 'anim-slide-right-out' : 'anim-slide-right', 'top-[70px] right-3 bottom-3 z-[44] w-[380px] rounded-[14px] bg-[color-mix(in_srgb,var(--color-surface)_96%,transparent)] shadow-md backdrop-blur-md'),
+        leaving && 'pointer-events-none',
       )}
     >
       {mobile && <div className="mt-2 h-1 w-10 self-center rounded-full bg-neutral-700" />}
@@ -52,7 +55,7 @@ export function SidePanel() {
             title={label}
             onClick={() => set({ panel: key })}
             className={cx(
-              'flex items-center gap-1.5',
+              'flex items-center gap-1.5 transition-[color,box-shadow] duration-200',
               mobile ? 'px-3.5 pt-2 pb-2.5 text-lg' : 'px-2.5 pt-2 pb-2.5 text-[13px]',
               panel === key ? 'text-text shadow-[inset_0_-2px_0_var(--color-accent)]' : 'text-neutral-500',
             )}
@@ -65,7 +68,7 @@ export function SidePanel() {
           <X />
         </button>
       </div>
-      <div className="flex flex-1 flex-col gap-[18px] overflow-auto p-4">
+      <div key={panel} className="anim-fade flex flex-1 flex-col gap-[18px] overflow-auto p-4">
         {panel === 'budget' && <BudgetTab />}
         {panel === 'tasks' && <TasksTab />}
         {panel === 'people' && <PeopleTab />}
@@ -213,6 +216,7 @@ function SettleUp({ transfers }: { transfers: Transfer[] }) {
     const s = useBoard.getState()
     s.change((b) => ({ ...b, settlements: [...b.settlements, { id: uid(), from: t.from, to: t.to, amount, t: Date.now() }] }))
     s.log(`marked ${board.people[t.from]?.name ?? '?'} → ${board.people[t.to]?.name ?? '?'} ${m(t.amount)} as settled`)
+    toast('Marked as settled', { label: 'Undo', run: () => s.undo() })
   }
   const undo = (sid: string) => useBoard.getState().change((b) => ({ ...b, settlements: b.settlements.filter((x) => x.id !== sid) }))
   const iso = isoOf(board.cur) ?? ''
@@ -302,7 +306,7 @@ function TasksTab() {
         {tasks.map(({ node, t }) => (
           <div key={t.id} className="flex min-h-10 items-center gap-2.5 px-1">
             <button type="button" aria-pressed={t.done} onClick={() => patchRow<Task>(node.id, 'items', t.id, { done: !t.done })} className="grid place-items-center text-[19px] text-accent">
-              {t.done ? <CheckSquare weight="fill" /> : <Square />}
+              {t.done ? <CheckSquare weight="fill" className="anim-check" /> : <Square />}
             </button>
             <div className="flex min-w-0 flex-1 flex-col leading-tight">
               <span className={cx('text-[13px]', t.done && 'text-neutral-500 line-through')}>{t.text || 'Untitled task'}</span>

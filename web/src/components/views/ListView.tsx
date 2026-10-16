@@ -94,7 +94,7 @@ export function ListView() {
           ))}
         </div>
       </div>
-      <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
+      <div className="stagger columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
         {shown.map((c) => (
           <ListCard key={c.id} id={c.id} fresh={c.id === justAdded} />
         ))}
@@ -129,7 +129,7 @@ function ListCard({ id, fresh }: { id: string; fresh: boolean }) {
   return (
     <div
       data-list-id={id}
-      className="anim-card group relative mb-4 flex break-inside-avoid flex-col rounded-[14px]"
+      className="anim-card lift group relative mb-4 flex break-inside-avoid flex-col rounded-[14px]"
       style={{
         background: cardBackground(frame),
         boxShadow: colorEdge(frame) + (fresh ? 'var(--shadow-card-active)' : 'var(--shadow-card)'),

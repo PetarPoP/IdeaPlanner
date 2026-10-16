@@ -7,6 +7,7 @@ import { newItem } from '~/lib/templates'
 import { addRow, patchRow, removeRow, useBoard, useNode } from '~/store/board'
 import { AddRowButton, CostField, Field, PlanPaidBar, RemoveButton } from '../ui'
 import { useBoardMeta, useRate } from './hooks'
+import { Tween } from '../Tween'
 
 export function SectionCard({ id }: { id: string }) {
   const rate = useRate()
@@ -24,7 +25,7 @@ export function SectionCard({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-2 px-3 pb-3">
       <div className="flex items-baseline gap-2">
-        <span className="text-[22px] font-medium tracking-[-0.02em]">{money(cur, total)}</span>
+        <span className="text-[22px] font-medium tracking-[-0.02em]"><Tween value={total} format={(v) => money(cur, v)} /></span>
         <span className="text-[11px] text-neutral-500">
           {budget ? (over ? `over ${money(cur, budget)} budget` : `of ${money(cur, budget)}`) : 'total'}
         </span>
@@ -44,7 +45,7 @@ export function SectionCard({ id }: { id: string }) {
               }}
               className={`grid size-[22px] flex-none place-items-center text-[17px] ${i.paid ? 'text-accent' : 'text-neutral-600'}`}
             >
-              {i.paid ? <CheckCircle weight="fill" /> : <Circle />}
+              {i.paid ? <CheckCircle weight="fill" className="anim-check" /> : <Circle />}
             </button>
             <Field value={i.text} onValue={(text, m) => row(i, { text }, m)} placeholder="Item" className="flex-1 py-1 text-[13px]" />
             {i.paid && (

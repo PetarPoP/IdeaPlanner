@@ -28,7 +28,7 @@
         "img-src": "'self' data: blob:",
         "font-src": "'self' data:",
         "frame-src": "https://maps.google.com https://www.google.com",
-        "connect-src": "'self' ipc: http://ipc.localhost https:"
+        "connect-src": "'self' ipc: http://ipc.localhost https: wss: ws://localhost:*"
       }
     }
   },

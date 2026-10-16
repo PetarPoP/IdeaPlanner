@@ -7,6 +7,7 @@ import { BOARD_ICONS, NamedIcon } from '~/lib/icons'
 import { money } from '~/lib/money'
 import { isMobileWidth, useBoard } from '~/store/board'
 import { DateField, Field, PlanPaidBar, cx } from '../ui'
+import { Tween } from '../Tween'
 import { Popover } from './Popover'
 import { SyncBadge } from './SyncBadge'
 import { LiveAvatars } from './LiveAvatars'
@@ -245,7 +246,7 @@ function BudgetSummaryButton({ wide }: { wide: boolean }) {
       {wide && (
         <div className="flex flex-col items-start leading-[1.15]">
           <span className="text-[9.5px] tracking-[.08em] text-neutral-500 uppercase">Planned</span>
-          <span className="text-[15px] font-medium">{m(sum.total)}</span>
+          <span className="text-[15px] font-medium"><Tween value={sum.total} format={m} /></span>
         </div>
       )}
       {wide && (
@@ -258,7 +259,7 @@ function BudgetSummaryButton({ wide }: { wide: boolean }) {
       )}
       <div className="flex flex-col items-start leading-[1.15]">
         <span className="text-[9.5px] tracking-[.08em] text-accent uppercase">Per person</span>
-        <span className="text-[15px] font-medium text-accent-200">{m(sum.perPerson)}</span>
+        <span className="text-[15px] font-medium text-accent-200"><Tween value={sum.perPerson} format={m} /></span>
       </div>
     </button>
   )

@@ -126,6 +126,86 @@
   }
 }
 
+@keyframes ip-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+@keyframes ip-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes ip-slide-left-out {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes ip-slide-right-out {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes ip-sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes ip-card-out {
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+    filter: blur(2px);
+  }
+}
+@keyframes ip-check {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes ip-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes ip-wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-14deg);
+  }
+  40% {
+    transform: rotate(12deg);
+  }
+  60% {
+    transform: rotate(-8deg);
+  }
+  80% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes ip-toast {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+@keyframes ip-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
 @layer utilities {
   .anim-card {
     animation: ip-card-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -154,6 +234,101 @@
   }
   .anim-page {
     animation: ip-page 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* Leaving: the same moves played back, faster. */
+  .anim-out {
+    animation: ip-out 0.14s ease-in both;
+  }
+  .anim-fade-out {
+    animation: ip-fade-out 0.14s ease-in both;
+  }
+  .anim-slide-left-out {
+    animation: ip-slide-left-out 0.18s ease-in both;
+  }
+  .anim-slide-right-out {
+    animation: ip-slide-right-out 0.16s ease-in both;
+  }
+  .anim-sheet-out {
+    animation: ip-sheet-out 0.2s ease-in both;
+  }
+  .anim-card-out {
+    animation: ip-card-out 0.18s ease-in both;
+    pointer-events: none;
+  }
+  /* A check, vote or heart being set. */
+  .anim-check {
+    animation: ip-check 0.32s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  }
+  .anim-wiggle {
+    animation: ip-wiggle 0.9s ease-in-out 0.2s 2;
+    transform-origin: 50% 10%;
+  }
+  .anim-toast {
+    animation: ip-toast 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* An SVG path drawing itself in; needs pathLength="1". */
+  .anim-draw {
+    stroke-dasharray: 1;
+    animation: ip-draw 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  /* Placeholder while something loads. */
+  .shimmer {
+    background: linear-gradient(90deg, var(--color-neutral-900) 0%, var(--color-neutral-800) 50%, var(--color-neutral-900) 100%) 0 0 / 200% 100%;
+    animation: ip-shimmer 1.4s linear infinite;
+  }
+  /* Children of a list arrive one after another. */
+  .stagger > :nth-child(2) {
+    animation-delay: 56ms;
+  }
+  .stagger > :nth-child(3) {
+    animation-delay: 84ms;
+  }
+  .stagger > :nth-child(4) {
+    animation-delay: 112ms;
+  }
+  .stagger > :nth-child(5) {
+    animation-delay: 140ms;
+  }
+  .stagger > :nth-child(6) {
+    animation-delay: 168ms;
+  }
+  .stagger > :nth-child(7) {
+    animation-delay: 196ms;
+  }
+  .stagger > :nth-child(8) {
+    animation-delay: 224ms;
+  }
+  .stagger > :nth-child(9) {
+    animation-delay: 252ms;
+  }
+  .stagger > :nth-child(10) {
+    animation-delay: 280ms;
+  }
+  .stagger > :nth-child(11) {
+    animation-delay: 308ms;
+  }
+  .stagger > :nth-child(12) {
+    animation-delay: 336ms;
+  }
+  .stagger > :nth-child(n + 13) {
+    animation-delay: 364ms;
+  }
+  /* Cards in the list views rise a little under the pointer. */
+  .lift {
+    transition:
+      translate 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.2s;
+  }
+  .lift:hover {
+    translate: 0 -2px;
+  }
+  /* Bars and meters glide to new values. */
+  .meter {
+    transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  /* The board glides to a new view (fit, zoom buttons, jump to a card). */
+  .view-glide {
+    transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
 
@@ -234,6 +409,13 @@
   }
 
   .btn {
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      border-color 0.15s,
+      box-shadow 0.15s,
+      opacity 0.15s,
+      transform 0.09s;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -247,6 +429,10 @@
     padding: 5.6px 10px;
     border-radius: var(--radius-md);
     text-decoration: none;
+  }
+  .btn:active:not(:disabled),
+  .seg-opt:active {
+    transform: scale(0.96);
   }
   .btn:disabled {
     opacity: 0.45;
@@ -318,6 +504,11 @@
     border-left: 1px solid var(--color-divider);
   }
   .seg-opt {
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      box-shadow 0.2s,
+      transform 0.09s;
     display: inline-flex;
     align-items: center;
     gap: 5px;

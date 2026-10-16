@@ -22,7 +22,7 @@ export function ChecklistCard({ id }: { id: string }) {
       {n.items.map((t) => (
         <div key={t.id} className="flex min-h-8 items-center gap-2">
           <button type="button" aria-pressed={t.done} onClick={() => row(t, { done: !t.done })} className="grid place-items-center text-lg text-accent">
-            {t.done ? <CheckSquare weight="fill" /> : <Square />}
+            {t.done ? <CheckSquare weight="fill" className="anim-check" /> : <Square />}
           </button>
           <Field
             value={t.text}
