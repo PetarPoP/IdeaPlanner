@@ -21,3 +21,4 @@ src-tauri/gen/schemas/
 *.swp
 *.swo
 .DS_Store
+.claude/worktrees/
