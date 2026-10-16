@@ -35,15 +35,22 @@
       colours, middle-mouse/space pan, new shortcuts, entry animations.
 - [x] CI: typecheck, vitest, build, fmt, clippy, cargo test, generated type
       drift check.
+- [x] Round 3: live editing with cursors (WebSocket patches), accounts
+      (email link/code, Google) with enforced View/Edit/Admin and link
+      access, boards follow your account, reminders (bell, notifications,
+      daily email digest), booking emails → Booking cards (AI or regex),
+      receipt scan, multi-currency, settle-up via PayPal/Revolut + mark
+      settled, offline PWA, PDF/CSV/.ics export, card colours, sticky
+      notes, frames, comments, mini-map, weather and travel times, and an
+      animation pass (exits, toasts, stagger, tweened totals).
 
 ## Next steps
-- Real-time collaboration (presence cursors, live updates): today the last
-  save wins and others see changes on reload.
-- Accounts/auth so roles are enforced server-side (roles are stored only).
+- Configure the real services in SETUP.md.
+- Live editing with several server instances needs a shared pub/sub (rooms
+  live in one process today).
 - `tauri android init` / `tauri ios init` and store signing.
 - Photo storage outside the board document for large boards.
 
 ## Tech debt / known issues
-- The board list, "shared with me" and trash live per device (localStorage
-  index and SQLite); there are no accounts to sync them yet.
+- Trash lives per device; the board list syncs only for signed-in users.
 - Map embeds rely on Google Maps' public embed URLs.

@@ -59,7 +59,8 @@ cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
 
 ## Configuration
 
-See `.env.example`. The server keeps boards in memory unless
+**[SETUP.md](SETUP.md)** walks through every service to switch on (database,
+sign-in email, Google, Anthropic, email in, mobile). See `.env.example`. The server keeps boards in memory unless
 `DATABASE_URL` points at Postgres (Neon works); migrations run on start.
 Desktop and mobile builds sync with a server when built with
 `VITE_API_URL`, and show share links when built with `VITE_PUBLIC_URL`.
@@ -75,6 +76,16 @@ DATABASE_URL=… WEB_DIST=web/dist/client ./target/release/ideaplanner-server
 `web/dist/client` also works on any static host on its own; boards then
 stay in each browser.
 
+## Accounts, sharing and live editing
+
+People sign in with an emailed link or code, or Google. A board saved while
+signed in belongs to its creator; the Share panel sets what anyone with the
+link can do (nothing, view, edit) and invites people as View, Edit or Admin.
+The server enforces it. Boards nobody owns stay open to anyone with the link.
+Everyone on a board edits it live over a WebSocket
+(`/api/boards/<id>/live`): changes are small patches, last writer wins per
+card, and you see others' cursors and selections.
+
 ## Email into a board
 
 Each board can receive email at `board-<id>@<INBOX_DOMAIN>`. Point your mail
@@ -84,6 +95,12 @@ Postmark inbound…) at `POST /api/inbox` with the raw message as the body and
 `mail-parser`) and adds an email card. With both variables set, the address
 shows on email cards and in the Share panel. Without a server, paste an
 email or drop an `.eml` file onto an email card instead.
+
+## Money
+
+Costs can be in other currencies (converted with open.er-api.com rates),
+receipts can be scanned into expenses, and settle-up links straight to
+PayPal or Revolut (set each person's handle in People) with "Mark settled".
 
 ## Views
 
