@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { Check, ClipboardText, Copy, EnvelopeSimple, Paperclip } from '@phosphor-icons/react'
+import { AirplaneTilt, Check, ClipboardText, Copy, EnvelopeSimple, Paperclip, SpinnerGap } from '@phosphor-icons/react'
+import type { BookingGuess } from '~/lib/bookingParse'
+import { guessBooking } from '~/lib/bookingParse'
+import { BOOKING_KINDS } from '~/lib/catalog'
+import { symbolFor } from '~/lib/rates'
+import { aiCall, useAccount } from '~/store/account'
 import type { Node } from '~/lib/model.gen'
 import type { ChangeMode } from '~/store/board'
 import { useInboxAddress } from '~/hooks/useInbox'
@@ -17,7 +22,36 @@ export function EmailCard({ id }: { id: string }) {
   const [over, setOver] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [reading, setReading] = useState(false)
+  const ai = useAccount((s) => s.ai && !!s.user)
   if (!n) return null
+
+  /** Reads the booking out of the email (with Claude when the server can) and puts it next to it. */
+  const toBooking = async () => {
+    setReading(true)
+    setNote(null)
+    let g: BookingGuess | null = null
+    if (ai) {
+      try {
+        const r = await aiCall<BookingGuess & { isBooking: boolean; currency: string }>('/api/ai/booking', { text: `Subject: ${n.subject}\n\n${n.body}` })
+        g = r.isBooking ? { ...r, cur: r.currency ? symbolFor(r.currency) : '' } : null
+      } catch {
+        // Fall back to reading it here.
+      }
+    }
+    g ??= guessBooking(n.subject, n.body)
+    setReading(false)
+    if (!g) {
+      setNote("Couldn't find a booking in this email.")
+      return
+    }
+    const s = useBoard.getState()
+    const kind = g.kind ?? 'Flight'
+    if (g.cur === s.board?.cur) g = { ...g, cur: '' }
+    const newId = s.addNode('booking', { x: n.x + n.w + 60, y: n.y }, { ...g, kind, icon: BOOKING_KINDS[kind].icon, title: g.title || 'Booking' })
+    s.addEdge(id, newId)
+    s.log(`turned "${n.subject || 'an email'}" into a booking`)
+  }
 
   const set = (patch: Partial<Mail>, mode?: ChangeMode) => patchNode<'email'>(id, (x) => ({ ...x, ...patch }), mode)
 
@@ -121,7 +155,13 @@ export function EmailCard({ id }: { id: string }) {
             }}
           />
         </label>
-        {note && <span className="text-[11px] text-neutral-500">{note}</span>}
+        {!empty && (
+          <button type="button" onClick={() => void toBooking()} disabled={reading} className="btn btn-primary px-2 py-1 text-xs">
+            {reading ? <SpinnerGap className="animate-spin" /> : <AirplaneTilt />}
+            Turn into booking
+          </button>
+        )}
+        {note && <span className="anim-fade text-[11px] text-neutral-500">{note}</span>}
       </div>
       {address && (
         <div className="flex items-center gap-1.5 rounded-lg bg-bg py-1 pr-1 pl-2 text-[11px] text-neutral-400 shadow-inset">

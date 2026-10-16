@@ -53,3 +53,10 @@ export async function fetchRates(board: Board): Promise<Record<string, number> |
   }
   return out
 }
+
+/** The symbol the app uses for an ISO code (`EUR` → `€`), or the code itself. */
+export function symbolFor(iso: string): string {
+  const code = iso.trim().toUpperCase()
+  const hit = Object.entries(ISO).find(([sym, c]) => c === code && sym !== 'kn' && sym !== 'дин')
+  return hit?.[0] ?? code
+}

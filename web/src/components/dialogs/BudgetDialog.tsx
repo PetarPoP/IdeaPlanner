@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { Plus, Wallet, X } from '@phosphor-icons/react'
+import { Camera, Plus, SpinnerGap, Wallet, X } from '@phosphor-icons/react'
+import { imageToDataUrl } from '~/lib/image'
+import { symbolFor } from '~/lib/rates'
+import { aiCall, useAccount } from '~/store/account'
 import { nodeTotal } from '~/lib/budget'
 import { CURRENCIES } from '~/lib/catalog'
 import { NamedIcon } from '~/lib/icons'
@@ -24,15 +27,31 @@ export function BudgetDialog() {
   const { change, set, log } = useBoard.getState()
   const close = () => set({ dialog: null })
   const sections = board.nodes.filter((n) => n.type === 'section')
-  const [qa, setQa] = useState({ text: '', amt: '', node: '', payer: -1 })
+  const [qa, setQa] = useState({ text: '', amt: '', cur: '', node: '', payer: -1 })
+  const [scan, setScan] = useState<'idle' | 'busy' | 'failed'>('idle')
+  const canScan = useAccount((s) => s.ai && !!s.user)
   const qaNode = sections.some((s) => s.id === qa.node) ? qa.node : (sections[0]?.id ?? '')
 
   const addExpense = () => {
     if (!qaNode || !qa.text.trim()) return
-    const item = { id: uid(), text: qa.text.trim(), cost: qa.amt, cur: '', paid: qa.payer >= 0, payer: Math.max(0, qa.payer), due: '' }
+    const item = { id: uid(), text: qa.text.trim(), cost: qa.amt, cur: qa.cur, paid: qa.payer >= 0, payer: Math.max(0, qa.payer), due: '' }
     patchNode<'section'>(qaNode, (x) => ({ ...x, items: [...x.items, item] }))
     log(`added expense ${item.text}`)
-    setQa({ text: '', amt: '', node: qaNode, payer: -1 })
+    setQa({ text: '', amt: '', cur: '', node: qaNode, payer: -1 })
+  }
+
+  /** Reads a receipt photo with Claude and fills in the expense. */
+  const scanReceipt = async (file: File) => {
+    setScan('busy')
+    try {
+      const image = await imageToDataUrl(file, 1600, 0.85)
+      const r = await aiCall<{ merchant: string; total: string; currency: string }>('/api/ai/receipt', { image })
+      const cur = r.currency ? symbolFor(r.currency) : ''
+      setQa((q) => ({ ...q, text: r.merchant || q.text, amt: cleanAmount(r.total) || q.amt, cur: cur === board.cur ? '' : cur, payer: q.payer < 0 ? useBoard.getState().me : q.payer }))
+      setScan('idle')
+    } catch {
+      setScan('failed')
+    }
   }
 
   return (
@@ -136,11 +155,32 @@ export function BudgetDialog() {
             addExpense()
           }}
         >
-          <span className="text-[13px] font-medium">Add an expense</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-medium">Add an expense</span>
+            {scan === 'failed' && <span className="anim-fade text-[11px] text-neutral-500">Couldn't read that receipt.</span>}
+            {canScan && (
+              <label className="btn btn-secondary ml-auto cursor-pointer px-2.5 py-1 text-xs">
+                {scan === 'busy' ? <SpinnerGap className="animate-spin" /> : <Camera />}
+                {scan === 'busy' ? 'Reading…' : 'Scan receipt'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  disabled={scan === 'busy'}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) void scanReceipt(f)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            )}
+          </div>
           <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-2">
             <input className="input" value={qa.text} onChange={(e) => setQa({ ...qa, text: e.target.value })} placeholder="What was it?" aria-label="Expense" />
             <label className="flex min-h-9 items-center gap-1 rounded-lg border border-divider bg-surface px-2.5">
-              <span className="text-neutral-500">{board.cur}</span>
+              <span className="text-neutral-500">{qa.cur || board.cur}</span>
               <input
                 value={qa.amt}
                 onChange={(e) => setQa({ ...qa, amt: cleanAmount(e.target.value) })}

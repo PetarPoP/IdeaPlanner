@@ -445,11 +445,15 @@ fn add_booking(board: &mut Board, mail_id: &str, g: ai::BookingGuess) {
         BookingKind::Ticket => "ticket",
     };
     let id = unique_id(board, format!("{mail_id}-booking"));
-    let cur = if g.currency.is_empty() || g.currency.eq_ignore_ascii_case(&board.cur) {
-        String::new()
-    } else {
-        g.currency
+    // The app writes currencies as symbols ("€"), Claude answers with ISO codes.
+    let cur = match g.currency.to_ascii_uppercase().as_str() {
+        "EUR" => "€".to_owned(),
+        "USD" => "$".to_owned(),
+        "GBP" => "£".to_owned(),
+        "RSD" => "din".to_owned(),
+        other => other.to_owned(),
     };
+    let cur = if cur == board.cur { String::new() } else { cur };
     board.nodes.push(Node {
         id: id.clone(),
         x,

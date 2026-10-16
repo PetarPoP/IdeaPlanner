@@ -10,6 +10,7 @@ import { DateField, Field, PlanPaidBar, cx } from '../ui'
 import { Popover } from './Popover'
 import { SyncBadge } from './SyncBadge'
 import { LiveAvatars } from './LiveAvatars'
+import { ReminderBell } from './ReminderBell'
 import { ViewSwitcher } from './ViewSwitcher'
 
 export function TopBar() {
@@ -75,6 +76,12 @@ export function TopBar() {
             <PanelButton title="Activity" on={panel === 'activity'} onClick={() => togglePanel('activity')}>
               <ClockCounterClockwise size={18} />
             </PanelButton>
+            <ReminderBell />
+          </div>
+        )}
+        {mobile && (
+          <div className="glass-sm pointer-events-auto flex-none rounded-xl p-[5px]">
+            <ReminderBell />
           </div>
         )}
         {mobile && (

@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { CheckCircle, Circle, Crosshair, Export, PencilSimple } from '@phosphor-icons/react'
+import { CalendarPlus, CheckCircle, Circle, Crosshair, Export, PencilSimple } from '@phosphor-icons/react'
 import { useShallow } from 'zustand/react/shallow'
 import type { CostItem, Stop } from '~/lib/model.gen'
 import type { CostedNode } from '~/lib/budget'
 import { nodePaid, nodeTotal, summarize } from '~/lib/budget'
 import { BOOKING_KINDS, KIND_LABEL } from '~/lib/catalog'
-import { dayLabel } from '~/lib/dates'
+import { dayLabel, toIso } from '~/lib/dates'
 import { NamedIcon } from '~/lib/icons'
 import { money, num } from '~/lib/money'
 import { newItem } from '~/lib/templates'
@@ -133,6 +133,7 @@ function CostCard({ n, max, filter }: { n: CostedNode; max: number; filter: Filt
                     placeholder="Item"
                     className="flex-1 text-[13px]"
                   />
+                  {!i.paid && <DueButton due={i.due} onDue={(due) => patchRow<CostItem>(n.id, 'items', i.id, { due })} />}
                 </Line>
               ),
           )}
@@ -224,5 +225,39 @@ function Line({
       )}
       <CostField cur={cur} value={cost} paid={paid} onValue={onCost} width={56} placeholder="–" />
     </div>
+  )
+}
+
+/** When an unpaid cost is due, for reminders. Opens the date picker. */
+function DueButton({ due, onDue }: { due: string; onDue: (due: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const overdue = !!due && due < toIso(new Date())
+  return (
+    <span className="relative flex flex-none items-center">
+      <button
+        type="button"
+        title={due ? `Due ${dayLabel(due)} · change` : 'Set a due date'}
+        onClick={() => {
+          try {
+            ref.current?.showPicker()
+          } catch {
+            ref.current?.focus()
+          }
+        }}
+        className={cx(
+          'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] transition-colors hover:bg-neutral-900',
+          due ? (overdue ? 'text-[#f08a8a]' : 'text-accent-300') : 'text-neutral-600',
+        )}
+      >
+        <CalendarPlus />
+        {due && dayLabel(due).replace(/^\w+, /, '')}
+      </button>
+      <input ref={ref} type="date" tabIndex={-1} aria-hidden value={due} onChange={(e) => onDue(e.target.value)} className="pointer-events-none absolute inset-0 opacity-0" />
+      {due && (
+        <button type="button" aria-label="Clear due date" onClick={() => onDue('')} className="text-[11px] text-neutral-600 hover:text-text">
+          ×
+        </button>
+      )}
+    </span>
   )
 }
