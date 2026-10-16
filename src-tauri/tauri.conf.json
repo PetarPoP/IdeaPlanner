@@ -1,28 +1,41 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Idea Planner",
-  "version": "0.1.0",
-  "identifier": "com.example.ideaplanner",
+  "version": "0.2.0",
+  "identifier": "com.petarpop.ideaplanner",
   "build": {
-    "beforeDevCommand": "npm run dev --prefix ./web",
-    "beforeBuildCommand": "npm run build --prefix ./web",
+    "beforeDevCommand": "npm run dev -w web",
+    "beforeBuildCommand": "npm run build -w web",
     "devUrl": "http://localhost:3000",
-    "frontendDist": "../web/out"
+    "frontendDist": "../web/dist/client"
   },
   "app": {
     "windows": [
       {
         "title": "Idea Planner",
         "width": 1280,
-        "height": 720,
-        "resizable": true
+        "height": 800,
+        "minWidth": 360,
+        "minHeight": 560,
+        "backgroundColor": "#161826"
       }
-    ]
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' data: blob:",
+        "font-src": "'self' data:",
+        "frame-src": "https://maps.google.com https://www.google.com",
+        "connect-src": "'self' ipc: http://ipc.localhost https: wss: ws://localhost:*"
+      }
+    }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": []
+    "category": "Productivity",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
   }
 }
-

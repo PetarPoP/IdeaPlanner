@@ -2,65 +2,24 @@
 alwaysApply: true
 ---
 
-# Expertise and Context
-You are an expert in modern cross-platform development, specializing in Next.js (App Router), Rust (Tauri v2), TypeScript, Tailwind CSS, shadcn/ui, and Rust backend frameworks (Axum/Actix-web).
+# Stack
+- UI: TanStack Start in SPA mode (`web/`), React 19, TypeScript, Tailwind CSS 4,
+  Zustand, Phosphor icons. One build serves web, Tauri desktop and Tauri mobile.
+- Rust: `crates/core` (board model, validation, ts-rs types), `src-tauri`
+  (Tauri 2, SQLite), `server` (Axum, sqlx/Postgres).
 
-# Philosophy
-- Prioritize server-first architecture (RSC) for web, but use Tauri's bridge for desktop/mobile.
-- Minimize complexity and avoid redundancy.
-- Maintain a clear separation between UI (Next.js) and heavy logic/system access (Rust).
+# Rules
+- The board model lives in `crates/core/src/model.rs`. Change it there, then
+  run `npm run gen:types`; never edit `web/src/lib/model.gen.ts` by hand.
+- Take colors, radii and shadows from the Nocturne tokens in
+  `web/src/styles.css` (`bg-surface`, `text-accent-300`, `shadow-card`…);
+  inline styles only for computed geometry.
+- Wrap Tauri-only APIs in `isTauri()` checks so the web build keeps working.
+- Board edits go through the store (`web/src/store/board.ts`) with a
+  `ChangeMode` so undo history stays correct.
+- Validate every board write in Rust with `Board::from_json`.
+- Keep `@status.md` current: progress, completed work, next steps, known issues.
 
-# Tooling
-- Frontend: lucide-react (icons), zod (validation), react-hook-form (forms).
-- Backend (Rust): Tauri v2 (mobile & desktop), Axum/Actix-web (web server), SQLx/SeaORM (DB).
-- Communication: Tauri `invoke` for local commands, `rspc` or standard fetch for web API.
-
-# Status Tracking (CRITICAL)
-- Requirement: Maintain a `@status.md` file in the root directory.
-- Action: Before ending a turn or after major changes, update `@status.md` with:
-  1. Current progress.
-  2. Completed tasks.
-  3. Pending issues/next steps.
-  4. Current tech debt or blocking bugs.
-- Purpose: Use `@status.md` at the start of every new session to regain context immediately.
-
-# No Placeholders Policy
-- CRITICAL: Do NOT use placeholders like `// ... rest of code` or `// implementation stays the same`.
-- Full Output: Always provide complete, functional code blocks. If a file is large, provide the specific function fully implemented.
-
-# Project Structure and Standards
-- @/app: Next.js Routes and server components (Web focus).
-- @/src-tauri: Rust backend, Tauri commands, and configuration.
-- @/components/ui: shadcn/ui components (atomic).
-- @/components/features: Domain-specific, complex components.
-- @/lib: Utilities, shared logic, and Rust-bridge clients.
-- @/hooks: Custom React hooks (including Tauri `useNavigate` or `invoke` wrappers).
-
-# Coding Standards
-- TypeScript: Functional, declarative, explicit types, no classes.
-- Rust: Idiomatic Rust, descriptive error types (Anyhow/thiserror), efficient memory management.
-- Naming: Prefix event handlers with "handle" (handleClick), use auxiliary verbs (isLoading).
-- Control Flow: Early returns to avoid nested blocks.
-- Styling: Tailwind CSS, mobile-first approach, no inline CSS.
-
-# Tauri & Next.js Specifics
-- Next.js: Use `output: 'export'` for Tauri builds. Maximize RSC for web-only deployments.
-- Tauri Bridge: Wrap Tauri-specific APIs (window, fs, shell) in checks to prevent errors during web-only execution or SSR.
-- State Management: URL searchParams for UI state. Zustand for complex global/cross-platform state.
-
-# Code Review and Process
-Before suggesting changes, review existing files and @status.md. Provide:
-1. Purpose: Why is this change necessary?
-2. Implementation: Minimal yet complete code snippet.
-3. Validation: A targeted test or step (e.g., `cargo tauri dev`).
-4. Edge Cases: Address offline states, Tauri bridge failures, and network errors.
-
-# Security (SECURITY_REVIEW)
-- Mandatory review for auth, DB writes, and Tauri commands.
-- Mitigation: Use `zod` in TS and `serde`/validation in Rust. 
-- Use Tauri's scope permissions (fs, allowlist) strictly.
-
-# Performance and Robustness
-- Rust: Avoid unnecessary clones. Use async/await for I/O.
-- Next.js: Minimize re-renders, use `next/image` and dynamic imports for heavy components.
-- Error Handling: Use try-catch for API/Tauri calls. Provide user-friendly error messages.
+# Checks
+- `npm run typecheck && npm test`
+- `cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace`

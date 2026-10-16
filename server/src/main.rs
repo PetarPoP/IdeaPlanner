@@ -1,268 +1,134 @@
-use std::str::FromStr as _;
-use std::net::SocketAddr;
+//! Idea Planner server: serves the web build and stores shared boards so
+//! share links work across devices.
+//!
+//! Configuration (environment or `.env`):
+//! - `DATABASE_URL`  Postgres (e.g. Neon). Without it boards live in memory.
+//! - `WEB_DIST`      built web app, default `web/dist/client`.
+//! - `PORT`          default 3001.
+//! - `INBOX_TOKEN`, `INBOX_DOMAIN`  turn on email-in: mail sent to
+//!   `board-<id>@INBOX_DOMAIN` and forwarded as raw MIME to `POST /api/inbox`
+//!   with `Authorization: Bearer INBOX_TOKEN` becomes an email card.
+//! - `PUBLIC_URL`    where people open the app (sign-in links, invites).
+//! - `RESEND_API_KEY`, `MAIL_FROM`  send real email (sign-in, invites,
+//!   reminders); without them emails are written to the log.
+//! - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`  "Continue with Google".
+//! - `ANTHROPIC_API_KEY` (`ANTHROPIC_MODEL`)  read receipts and bookings.
+//! - `DIGEST_HOUR_UTC`  hour the daily reminder email goes out, default 7.
+//! - `CORS_ORIGINS`  comma-separated origins allowed to call the API
+//!   (needed when a desktop/mobile build syncs through `VITE_API_URL`).
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{get, post},
-    Json, Router,
-};
-use chrono::{DateTime, Utc};
-use dotenvy::dotenv;
-use serde::Deserialize;
+mod ai;
+mod api;
+mod auth;
+mod digest;
+mod inbox;
+mod live;
+mod mailer;
+mod store;
+
+use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+
+use anyhow::Context;
+use axum::http::{header, HeaderValue, Method};
 use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
-use tracing::{error, info};
+use tower_http::{
+    compression::CompressionLayer,
+    cors::CorsLayer,
+    services::{ServeDir, ServeFile},
+    trace::TraceLayer,
+};
 
-#[derive(Clone)]
-struct AppState {
-    pool: PgPool,
-}
-
-#[derive(Debug, thiserror::Error)]
-enum AppError {
-    #[error("database error")]
-    Sqlx(#[from] sqlx::Error),
-
-    #[error("invalid uuid: {0}")]
-    Uuid(#[from] uuid::Error),
-
-    #[error("internal error")]
-    Other(#[from] anyhow::Error),
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> axum::response::Response {
-        error!(error = ?self, "request failed");
-        (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
-    }
-}
+use store::Store;
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
-    dotenv().ok();
-    // When run from server/, also try loading .env from project root
-    if std::env::var("DATABASE_URL").is_err() {
-        let _ = dotenvy::from_path("../.env");
-    }
+async fn main() -> anyhow::Result<()> {
+    dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
-        .with_env_filter("info,sqlx=warn")
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info,sqlx=warn,tower_http=info".into()),
+        )
         .init();
 
-    let database_url =
-        std::env::var("DATABASE_URL").expect("DATABASE_URL env var must be set for NeonDB");
-    // sqlx does not support channel_binding; strip it to avoid a parse warning
-    let database_url = database_url
-        .replace("&channel_binding=require", "")
-        .replace("?channel_binding=require&", "?")
-        .replace("?channel_binding=require", "");
+    let store = match std::env::var("DATABASE_URL") {
+        Ok(url) => {
+            let pool = PgPoolOptions::new()
+                .max_connections(5)
+                .connect(&url)
+                .await
+                .context("connecting to DATABASE_URL")?;
+            sqlx::migrate!("./migrations")
+                .run(&pool)
+                .await
+                .context("running migrations")?;
+            Store::Postgres(pool)
+        }
+        Err(_) => {
+            tracing::warn!("DATABASE_URL is not set: boards are kept in memory only");
+            Store::memory()
+        }
+    };
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
+    let dist =
+        PathBuf::from(std::env::var("WEB_DIST").unwrap_or_else(|_| "web/dist/client".into()));
+    if !dist.join("index.html").exists() {
+        tracing::warn!(path = %dist.display(), "web build not found; run `npm run build` in web/");
+    }
+    // Every unknown path is a client route (e.g. /b/<id>), so it gets the app shell.
+    let app_shell = ServeDir::new(&dist).fallback(ServeFile::new(dist.join("index.html")));
+
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(3001);
+    let http = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()?;
+    let state = Arc::new(api::AppState {
+        store,
+        inbox: inbox::InboxConfig::from_env(),
+        auth: auth::AuthConfig::from_env(port),
+        mailer: mailer::Mailer::from_env(http.clone()),
+        ai: ai::AiConfig::from_env(),
+        http,
+        rooms: live::Rooms::default(),
+    });
+    digest::spawn(state.clone());
+    let app = api::router(state)
+        .fallback_service(app_shell)
+        .layer(cors())
+        .layer(CompressionLayer::new())
+        .layer(TraceLayer::new_for_http());
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    tracing::info!("Idea Planner on http://{addr}");
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown())
         .await?;
-
-    let state = AppState { pool };
-
-    let app = Router::new()
-        .route("/healthz", get(health_check))
-        .route("/sync/ideas", post(sync_ideas))
-        .route("/sync/bullets", post(sync_bullets))
-        .route("/sync/votes", post(sync_votes))
-        .with_state(state);
-
-    let addr: SocketAddr = "0.0.0.0:3001".parse()?;
-    info!("Starting IdeaPlanner server on {addr}");
-
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app).await?;
-
     Ok(())
 }
 
-async fn health_check() -> &'static str {
-    "ok"
+fn cors() -> CorsLayer {
+    let origins: Vec<HeaderValue> = std::env::var("CORS_ORIGINS")
+        .unwrap_or_default()
+        .split(',')
+        .filter_map(|o| HeaderValue::from_str(o.trim()).ok())
+        .filter(|o| !o.is_empty())
+        .collect();
+    CorsLayer::new()
+        .allow_origin(origins)
+        .allow_methods([
+            Method::GET,
+            Method::PUT,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+        ])
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+        .expose_headers([header::HeaderName::from_static("x-board-role")])
 }
 
-#[derive(Debug, Deserialize)]
-struct IncomingIdea {
-    id: Option<uuid::Uuid>,
-    local_id: String,
-    club_id: String,
-    author_user_id: String,
-    title: String,
-    body: Option<String>,
-    #[allow(dead_code)]
-    sync_status: String,
-    updated_at: DateTime<Utc>,
+async fn shutdown() {
+    let _ = tokio::signal::ctrl_c().await;
 }
-
-#[derive(Debug, Deserialize)]
-struct IncomingBullet {
-    id: Option<uuid::Uuid>,
-    local_id: String,
-    idea_id: String,
-    content: String,
-    cost: Option<f64>,
-    image_url: Option<String>,
-    order_index: i32,
-    #[allow(dead_code)]
-    sync_status: String,
-    updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SyncIdeasBody {
-    ideas: Vec<IncomingIdea>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SyncBulletsBody {
-    bullets: Vec<IncomingBullet>,
-}
-
-#[derive(Debug, Deserialize)]
-struct IncomingVote {
-    id: Option<uuid::Uuid>,
-    local_id: String,
-    user_id: String,
-    bullet_id: String,
-    value: i32,
-    #[allow(dead_code)]
-    sync_status: String,
-    updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SyncVotesBody {
-    votes: Vec<IncomingVote>,
-}
-
-async fn sync_ideas(
-    State(state): State<AppState>,
-    Json(payload): Json<SyncIdeasBody>,
-) -> Result<impl IntoResponse, AppError> {
-    let mut tx = state.pool.begin().await?;
-
-    for idea in payload.ideas {
-        sqlx::query!(
-            r#"
-            INSERT INTO ideas (
-                id,
-                local_id,
-                club_id,
-                author_user_id,
-                title,
-                body,
-                sync_status,
-                updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, 'synced', $7)
-            ON CONFLICT (local_id) DO UPDATE SET
-                title = EXCLUDED.title,
-                body = EXCLUDED.body,
-                sync_status = 'synced',
-                updated_at = EXCLUDED.updated_at
-            "#,
-            idea.id,
-            idea.local_id,
-            idea.club_id.parse::<uuid::Uuid>()?,
-            idea.author_user_id.parse::<uuid::Uuid>()?,
-            idea.title,
-            idea.body,
-            idea.updated_at,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
-
-    tx.commit().await?;
-
-    Ok(StatusCode::NO_CONTENT)
-}
-
-async fn sync_bullets(
-    State(state): State<AppState>,
-    Json(payload): Json<SyncBulletsBody>,
-) -> Result<impl IntoResponse, AppError> {
-    let mut tx = state.pool.begin().await?;
-
-    for bullet in payload.bullets {
-        sqlx::query!(
-            r#"
-            INSERT INTO bullets (
-                id,
-                local_id,
-                idea_id,
-                content,
-                cost,
-                image_url,
-                order_index,
-                sync_status,
-                updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'synced', $8)
-            ON CONFLICT (local_id) DO UPDATE SET
-                content = EXCLUDED.content,
-                cost = EXCLUDED.cost,
-                image_url = EXCLUDED.image_url,
-                order_index = EXCLUDED.order_index,
-                sync_status = 'synced',
-                updated_at = EXCLUDED.updated_at
-            "#,
-            bullet.id,
-            bullet.local_id,
-            bullet.idea_id.parse::<uuid::Uuid>()?,
-            bullet.content,
-            bullet.cost.and_then(|c| sqlx::types::BigDecimal::from_str(&c.to_string()).ok()),
-            bullet.image_url,
-            bullet.order_index,
-            bullet.updated_at,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
-
-    tx.commit().await?;
-
-    Ok(StatusCode::NO_CONTENT)
-}
-
-async fn sync_votes(
-    State(state): State<AppState>,
-    Json(payload): Json<SyncVotesBody>,
-) -> Result<impl IntoResponse, AppError> {
-    let mut tx = state.pool.begin().await?;
-
-    for vote in payload.votes {
-        sqlx::query!(
-            r#"
-            INSERT INTO votes (
-                id,
-                local_id,
-                user_id,
-                bullet_id,
-                value,
-                sync_status,
-                updated_at
-            ) VALUES ($1, $2, $3, $4, $5, 'synced', $6)
-            ON CONFLICT (user_id, bullet_id) DO UPDATE SET
-                value = EXCLUDED.value,
-                sync_status = 'synced',
-                updated_at = EXCLUDED.updated_at
-            "#,
-            vote.id,
-            vote.local_id,
-            vote.user_id.parse::<uuid::Uuid>()?,
-            vote.bullet_id.parse::<uuid::Uuid>()?,
-            vote.value,
-            vote.updated_at,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
-
-    tx.commit().await?;
-
-    Ok(StatusCode::NO_CONTENT)
-}
-

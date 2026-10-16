@@ -1,0 +1,647 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+/*
+ * Nocturne design tokens (from the design system's styles.css), exposed to
+ * Tailwind so components use `bg-surface`, `text-accent-300`, `shadow-card`…
+ * instead of raw values.
+ */
+@theme {
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-mono: ui-monospace, Menlo, monospace;
+
+  --breakpoint-md: 760px;
+  --breakpoint-xl: 1180px;
+
+  --color-bg: #161826;
+  --color-surface: #232532;
+  --color-text: #e9e9ed;
+  --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
+  --color-note-from: #2e2a48;
+  --color-note-to: #25243a;
+
+  /* Card palette (see CARD_COLORS). */
+  --color-amber: #f0b86e;
+  --color-mint: #7fd1b9;
+  --color-rose: #f08a8a;
+  --color-sky: #82b4f0;
+
+  --color-accent: #9184d9;
+  --color-accent-100: #f5f4ff;
+  --color-accent-200: #e7e5fe;
+  --color-accent-300: #d2cefd;
+  --color-accent-400: #b5abfc;
+  --color-accent-500: #968ae0;
+  --color-accent-600: #796cbf;
+  --color-accent-700: #5d5294;
+  --color-accent-800: #423a6a;
+  --color-accent-900: #2b2741;
+
+  --color-neutral-100: #f3f5fe;
+  --color-neutral-200: #e4e7f5;
+  --color-neutral-300: #cfd3e5;
+  --color-neutral-400: #b2b6ca;
+  --color-neutral-500: #9397ab;
+  --color-neutral-600: #75798c;
+  --color-neutral-700: #595d6c;
+  --color-neutral-800: #3f424d;
+  --color-neutral-900: #292b31;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 0 0 1px #3f424d;
+  --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, 0.65);
+  --shadow-card: 0 0 0 1px #3f424d, 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-card-active: 0 0 0 1.5px var(--color-accent),
+    0 0 28px color-mix(in srgb, var(--color-accent) 30%, transparent), 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-card-lift: 0 0 0 1.5px var(--color-accent), 0 0 32px color-mix(in srgb, var(--color-accent) 35%, transparent),
+    0 24px 48px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 0 14px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  --shadow-inset: inset 0 0 0 1px #3f424d;
+
+  --animate-flow: flow 0.6s linear infinite;
+  @keyframes flow {
+    to {
+      stroke-dashoffset: -20;
+    }
+  }
+}
+
+/*
+ * Motion: short, eased, and only on entry, so editing never waits on an
+ * animation. Turned off for people who ask for reduced motion.
+ */
+@keyframes ip-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+@keyframes ip-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@keyframes ip-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes ip-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ip-modal {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+@keyframes ip-slide-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes ip-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes ip-sheet {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes ip-page {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes ip-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+@keyframes ip-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes ip-slide-left-out {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes ip-slide-right-out {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes ip-sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes ip-card-out {
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+    filter: blur(2px);
+  }
+}
+@keyframes ip-check {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes ip-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes ip-wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-14deg);
+  }
+  40% {
+    transform: rotate(12deg);
+  }
+  60% {
+    transform: rotate(-8deg);
+  }
+  80% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes ip-toast {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+@keyframes ip-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@layer utilities {
+  .anim-card {
+    animation: ip-card-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-pop {
+    animation: ip-pop 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* Tailwind centres with `translate`, so these animate `transform` without fighting it. */
+  .anim-drop {
+    animation: ip-drop 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-fade {
+    animation: ip-fade 0.18s ease-out both;
+  }
+  .anim-modal {
+    animation: ip-modal 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-slide-left {
+    animation: ip-slide-left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-slide-right {
+    animation: ip-slide-right 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-sheet {
+    animation: ip-sheet 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .anim-page {
+    animation: ip-page 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* Leaving: the same moves played back, faster. */
+  .anim-out {
+    animation: ip-out 0.14s ease-in both;
+  }
+  .anim-fade-out {
+    animation: ip-fade-out 0.14s ease-in both;
+  }
+  .anim-slide-left-out {
+    animation: ip-slide-left-out 0.18s ease-in both;
+  }
+  .anim-slide-right-out {
+    animation: ip-slide-right-out 0.16s ease-in both;
+  }
+  .anim-sheet-out {
+    animation: ip-sheet-out 0.2s ease-in both;
+  }
+  .anim-card-out {
+    animation: ip-card-out 0.18s ease-in both;
+    pointer-events: none;
+  }
+  /* A check, vote or heart being set. */
+  .anim-check {
+    animation: ip-check 0.32s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  }
+  .anim-wiggle {
+    animation: ip-wiggle 0.9s ease-in-out 0.2s 2;
+    transform-origin: 50% 10%;
+  }
+  .anim-toast {
+    animation: ip-toast 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* An SVG path drawing itself in; needs pathLength="1". */
+  .anim-draw {
+    stroke-dasharray: 1;
+    animation: ip-draw 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  /* Placeholder while something loads. */
+  .shimmer {
+    background: linear-gradient(90deg, var(--color-neutral-900) 0%, var(--color-neutral-800) 50%, var(--color-neutral-900) 100%) 0 0 / 200% 100%;
+    animation: ip-shimmer 1.4s linear infinite;
+  }
+  /* Children of a list arrive one after another. */
+  .stagger > :nth-child(2) {
+    animation-delay: 56ms;
+  }
+  .stagger > :nth-child(3) {
+    animation-delay: 84ms;
+  }
+  .stagger > :nth-child(4) {
+    animation-delay: 112ms;
+  }
+  .stagger > :nth-child(5) {
+    animation-delay: 140ms;
+  }
+  .stagger > :nth-child(6) {
+    animation-delay: 168ms;
+  }
+  .stagger > :nth-child(7) {
+    animation-delay: 196ms;
+  }
+  .stagger > :nth-child(8) {
+    animation-delay: 224ms;
+  }
+  .stagger > :nth-child(9) {
+    animation-delay: 252ms;
+  }
+  .stagger > :nth-child(10) {
+    animation-delay: 280ms;
+  }
+  .stagger > :nth-child(11) {
+    animation-delay: 308ms;
+  }
+  .stagger > :nth-child(12) {
+    animation-delay: 336ms;
+  }
+  .stagger > :nth-child(n + 13) {
+    animation-delay: 364ms;
+  }
+  /* Cards in the list views rise a little under the pointer. */
+  .lift {
+    transition:
+      translate 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.2s;
+  }
+  .lift:hover {
+    translate: 0 -2px;
+  }
+  /* Bars and meters glide to new values. */
+  .meter {
+    transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  /* The board glides to a new view (fit, zoom buttons, jump to a card). */
+  .view-glide {
+    transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  input,
+  textarea,
+  button,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  ::placeholder {
+    color: var(--color-neutral-600);
+  }
+  select option {
+    background: var(--color-surface);
+  }
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+  a {
+    color: var(--color-accent);
+  }
+  a:hover {
+    color: var(--color-accent-300);
+  }
+}
+
+/* Nocturne component classes, kept as in the design system. */
+@layer components {
+  .glass {
+    background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-md);
+  }
+  .glass-sm {
+    background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn {
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      border-color 0.15s,
+      box-shadow 0.15s,
+      opacity 0.15s,
+      transform 0.09s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1.2;
+    color: var(--color-text);
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 5.6px 10px;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+  }
+  .btn:active:not(:disabled),
+  .seg-opt:active {
+    transform: scale(0.96);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+  .btn-primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    color: var(--color-accent);
+  }
+  .btn-primary:active {
+    background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+  .btn-secondary {
+    border-color: var(--color-divider);
+  }
+  .btn-secondary:hover {
+    background: color-mix(in srgb, var(--color-text) 7%, transparent);
+    color: var(--color-text);
+  }
+  .btn-secondary:active {
+    background: color-mix(in srgb, var(--color-text) 14%, transparent);
+  }
+  .btn-ghost {
+    color: var(--color-accent);
+    padding-inline: 2.8px;
+  }
+  .btn-ghost:hover {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+  .btn-ghost:active {
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+  }
+
+  .input {
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 14px;
+    color: var(--color-text);
+    caret-color: var(--color-accent);
+    background: var(--color-surface);
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-md);
+  }
+  .input:hover {
+    border-color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  }
+  .input:focus-visible {
+    border-color: var(--color-accent);
+    outline-offset: 0;
+  }
+
+  .seg {
+    display: inline-flex;
+    overflow: hidden;
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-md);
+  }
+  .seg > * + * {
+    border-left: 1px solid var(--color-divider);
+  }
+  .seg-opt {
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      box-shadow 0.2s,
+      transform 0.09s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    font-size: 12px;
+    color: var(--color-neutral-400);
+  }
+  .seg-opt:hover {
+    background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  }
+  .seg-opt[aria-pressed='true'] {
+    color: var(--color-accent);
+    box-shadow: inset 0 0 0 1px var(--color-accent);
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    padding: 3px 10px;
+    border-radius: 6px;
+  }
+  .tag-accent {
+    background: var(--color-accent-800);
+    color: var(--color-accent-100);
+  }
+  .tag-neutral {
+    background: var(--color-neutral-800);
+    color: var(--color-neutral-100);
+  }
+
+  /* Borderless text field used inside cards. */
+  .field {
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    padding: 0;
+  }
+
+  .kicker {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-neutral-500);
+  }
+
+  /* A row rule that fades out at both ends (Nocturne signature). */
+  .rule-fade {
+    background: linear-gradient(
+        to right,
+        transparent,
+        color-mix(in srgb, var(--color-text) 8%, transparent) 48px,
+        color-mix(in srgb, var(--color-text) 8%, transparent) calc(100% - 48px),
+        transparent
+      )
+      no-repeat bottom / 100% 1px;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  /* Native date/time inputs, dressed for the dark cards. */
+  .date-field {
+    min-width: 0;
+    padding: 3px 6px;
+    font-size: 13px;
+    color: var(--color-text);
+    color-scheme: dark;
+    background: var(--color-bg);
+    border: 1px solid transparent;
+    border-radius: 6px;
+  }
+  .date-field:hover {
+    border-color: var(--color-neutral-800);
+  }
+  .date-field:focus-visible {
+    border-color: var(--color-accent);
+    outline: none;
+  }
+  .date-field.is-empty {
+    color: var(--color-neutral-600);
+  }
+  .date-field::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+}
+
+/* Holding space: the whole board becomes a pan handle. */
+body.space-pan [data-canvas] {
+  cursor: grab !important;
+}
+body.space-pan [data-canvas] * {
+  cursor: grab !important;
+}
+
+/* Printing the itinerary (PrintView): only it, on white paper. Other prints are left alone. */
+.print-root {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 16mm;
+  }
+  html:has(.print-root),
+  html:has(.print-root) body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+  body:has(> .print-root) > :not(.print-root) {
+    display: none !important;
+  }
+  .print-root {
+    display: block;
+    color: #1b1c26;
+    background: #fff;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .print-root h2 {
+    break-after: avoid;
+  }
+  .print-root tr,
+  .print-entry {
+    break-inside: avoid;
+  }
+}
